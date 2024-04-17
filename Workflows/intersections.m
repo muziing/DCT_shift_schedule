@@ -2,6 +2,7 @@ function [x0, y0, iout, jout] = intersections(x1, y1, x2, y2, robust)
 %INTERSECTIONS 计算两条曲线的交叉点。
 %   计算两条曲线相交的 (x,y) 位置。
 %   曲线可以被 NaN 打断，也可以有垂直线段。
+%   若没有找到交点，则返回 [NaN, NaN]
 %
 % 示例：
 %   [X0,Y0] = intersections(X1,Y1,X2,Y2,ROBUST);
@@ -287,6 +288,11 @@ else
         iout = i(in_range) + T(1,in_range).';
         jout = j(in_range) + T(2,in_range).';
     end
+end
+
+if isempty(x0)
+    x0 = NaN;
+    y0 = NaN;
 end
 
 %% 绘制结果（调试时建议取消注释来启用这个功能）
