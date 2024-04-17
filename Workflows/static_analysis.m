@@ -50,18 +50,18 @@ MotorTrqs = MotorData.ExternalCharacteristics.Peak.torque'; % 电机转矩
 
 % 环境
 g = 9.81; % 重力加速度，(m/s²)
-road_slope = 0; % 道路坡度，坡高/底长
+RoadSlope = 0; % 道路坡度，坡高/底长
 
 % 静态轴荷
 % $F_{Zs1} =G (\frac{b}{L} \cos\alpha - \frac{h_g}{L} \sin\alpha)$
 % $F_{Zs2} =G (\frac{a}{L} \cos\alpha - \frac{h_g}{L} \sin\alpha)$
 G = VehicleData.NoLoad.Mass * g; % 整车重力
 W_front = G * ...
-    (VehicleData.NoLoad.b / VehicleData.Wheelbase * cos(road_slope) - ...
-    VehicleData.NoLoad.hg / VehicleData.Wheelbase * sin(road_slope));
+    (VehicleData.NoLoad.b / VehicleData.Wheelbase * cos(RoadSlope) - ...
+    VehicleData.NoLoad.hg / VehicleData.Wheelbase * sin(RoadSlope));
 W_rear = G * ...
-    (VehicleData.NoLoad.a / VehicleData.Wheelbase * cos(road_slope) + ...
-    VehicleData.NoLoad.hg / VehicleData.Wheelbase * sin(road_slope));
+    (VehicleData.NoLoad.a / VehicleData.Wheelbase * cos(RoadSlope) + ...
+    VehicleData.NoLoad.hg / VehicleData.Wheelbase * sin(RoadSlope));
 
 %% 驱动力
 
@@ -82,9 +82,9 @@ u_a_1d = sort(u_a(:)); % 将二维数组 u_a 转成有序的一维数组，便�
 % $F_f = W f$
 
 % 滚动阻力系数估算（经验公式）
-rolling_resistance_f = 0.0076 + 0.000056 * u_a;
+rollingResistance_f = 0.0076 + 0.000056 * u_a;
 
-F_f = W_front * rolling_resistance_f + W_rear * rolling_resistance_f;
+F_f = W_front * rollingResistance_f + W_rear * rollingResistance_f;
 
 % 另一种滚动阻力估算经验公式：SAE J2542 胎压与车速经验公式
 % $F = (\frac{P}{P_0})^\alpha (\frac{N}{N_0})^\beta N_0 \cdot
@@ -103,7 +103,7 @@ F_w = VehicleData.Cd * VehicleData.FrontalArea * (u_a .^ 2) / 21.15;
 % 当汽车上坡行驶时，汽车重力沿坡道的分力表现为汽车坡度阻力
 % $F_i = G \sin(\alpha)$
 
-F_i = VehicleData.NoLoad.Mass * g * sin(road_slope);
+F_i = VehicleData.NoLoad.Mass * g * sin(RoadSlope);
 
 %% 加速阻力
 
@@ -122,45 +122,47 @@ figure('Name', "驱动力-行驶阻力平衡图")
 
 hold on
 
-plot(u_a(:, :), F_t(:, :))
+plot(u_a, F_t)
 plot(u_a_1d, sort(F_f(:) + F_w(:)), 'DisplayName', "F_f + F_w")
 
 % 求驱动力曲线与行驶阻力曲线交点坐标，并绘制在图上
-[max_spd, max_spd_F] = intersections(u_a(end, :), ...
+[maxSpd, maxSpd_F] = intersections(u_a(end, :), ...
     F_t(end, :), sort(u_a(:)), sort(F_f(:) + F_w(:)), false);
-scatter(max_spd, max_spd_F, 'DisplayName', "{u_a}_{max}")
+scatter(maxSpd, maxSpd_F, 'DisplayName', "{u_a}_{max}")
 
 title("驱动力-行驶阻力平衡图")
 xlabel("u_a / (km/h)")
 ylabel("F_t / N")
+xlim tight
 legend([Driveline.Str, "F_f + F_w", "{u_a}_{max}"], ...
     'Location', 'northeast')
 hold off
 
 %% 绘图：行驶加速度曲线
 
-% 由汽车行驶方程式（设 F_i = 0）得：
+% 由汽车行驶方程式得：
 % $\frac{\mathrm{d}u}{\mathrm{d}t} =
-% \frac{1}{\delta m} [F_t - (F_f + F_w)]$
+% \frac{1}{\delta m} [F_t - (F_f + F_w + F_i)]$
 
-acceleration = (F_t - (F_f + F_w)) ./ (delta * VehicleData.NoLoad.Mass);
-acceleration(acceleration < 0) = NaN; % 舍弃计算出的负值加速度
+accelerations = (F_t - (F_f + F_w + F_i)) ./ ...
+    (delta * VehicleData.NoLoad.Mass);
+accelerations(accelerations < 0) = NaN; % 舍弃计算出的负值加速度
 
 figure('Name', "行驶加速度曲线图")
 hold on
 
-plot(u_a(:, :), acceleration(:, :))
+plot(u_a, accelerations)
 
 % 遍历求解所有换挡点速度
-gear_spd = zeros(length(Driveline.ig) - 1, 1);
-gear_acc = zeros(length(Driveline.ig) - 1, 1);
-for index = 1:(length(Driveline.ig) - 1)
-    [gear_spd(index), gear_acc(index)] = intersections(u_a(:, index), ...
-        acceleration(:, index), u_a(:, index + 1), ...
-        acceleration(:, index + 1), false);
-end
-
-scatter(gear_spd, gear_acc)
+% gear_spd = zeros(length(Driveline.ig) - 1, 1);
+% gear_acc = zeros(length(Driveline.ig) - 1, 1);
+% for gearIdx = 1:(length(Driveline.ig) - 1)
+%     [gear_spd(gearIdx), gear_acc(gearIdx)] = intersections(u_a(:, gearIdx), ...
+%         acceleration(:, gearIdx), u_a(:, gearIdx + 1), ...
+%         acceleration(:, gearIdx + 1), false);
+% end
+%
+% scatter(gear_spd, gear_acc)
 
 title("行驶加速度曲线")
 xlabel("u_a / (km/h)")
@@ -168,3 +170,36 @@ ylabel("a / (m/s^2)")
 legend(Driveline.Str, 'Location', 'northeast')
 
 hold off
+
+%% 计算：动力性换挡规律
+
+% 加速踏板开度与电机转矩请求对应关系（此处标定为简单的线性关系）
+% TODO 通过双列数组指明对应关系
+
+accelPedalValues = [10, 40, 50, 90, 100] / 100; % 待处理的加速踏板开度列表
+
+shiftSpds = zeros(length(Driveline.ig) - 1, length(accelPedalValues));
+shiftAccs = zeros(length(Driveline.ig) - 1, length(accelPedalValues));
+
+for apIdx = 1:length(accelPedalValues)
+    % 计算在该AP开度下，各挡位行驶加速度曲线
+    accelerations = ((F_t * accelPedalValues(apIdx)) - (F_f + F_w + F_i)) ./ ...
+        (delta * VehicleData.NoLoad.Mass);
+    accelerations(accelerations < 0) = NaN; % 舍弃计算出的负值加速度
+
+    for gearIdx = 1:(length(Driveline.ig) - 1)
+        % 求解相邻挡位加速度曲线交点
+        [shiftSpd, shiftAcc] = intersections(u_a(:, gearIdx), ...
+            accelerations(:, gearIdx), u_a(:, gearIdx + 1), ...
+            accelerations(:, gearIdx + 1), false);
+
+        if isnan(shiftSpd)
+            % 如果两个相邻挡位曲线没有交点，则将升挡点设置为低挡位的最高车速
+            shiftSpd = u_a(end, gearIdx);
+        end
+
+        shiftSpds(gearIdx, apIdx) = shiftSpd;
+        shiftAccs(gearIdx, apIdx) = shiftAcc;
+    end
+
+end
