@@ -154,6 +154,7 @@ hold on
 plot(u_a, accelerations)
 
 % 遍历求解所有换挡点速度
+% 换挡点求解详情见 <static_shift_lines.m>
 % gear_spd = zeros(length(Driveline.ig) - 1, 1);
 % gear_acc = zeros(length(Driveline.ig) - 1, 1);
 % for gearIdx = 1:(length(Driveline.ig) - 1)
@@ -169,76 +170,4 @@ xlabel("u_a / (km/h)")
 ylabel("a / (m/s^2)")
 legend(Driveline.Str, 'Location', 'northeast')
 
-hold off
-
-%% 计算：动力型换挡规律
-
-% 加速踏板开度与电机转矩请求对应关系（此处标定为简单的线性关系）
-% TODO 通过双列数组指明对应关系
-
-accelPedalValues = [15, 30, 50, 90, 100]; % 待处理的加速踏板开度列表
-
-upShiftSpds = zeros(length(Driveline.ig) - 1, length(accelPedalValues) + 1);
-
-for apIdx = 1:length(accelPedalValues)
-    % 计算在该AP开度下，各挡位行驶加速度曲线
-    accelerations = ((F_t * accelPedalValues(apIdx) / 100) - (F_f + F_w + F_i)) ./ ...
-        (delta * VehicleData.NoLoad.Mass);
-    accelerations(accelerations < 0) = NaN; % 舍弃计算出的负值加速度
-
-    for gearIdx = 1:(length(Driveline.ig) - 1)
-        % 求解相邻挡位加速度曲线交点
-        [shiftSpd, ~] = intersections(u_a(:, gearIdx), ...
-            accelerations(:, gearIdx), u_a(:, gearIdx + 1), ...
-            accelerations(:, gearIdx + 1), false);
-
-        if isnan(shiftSpd)
-            % 如果两个相邻挡位曲线没有交点，则将升挡点设置为接近低挡位的最高车速
-            shiftSpd = u_a(end, gearIdx) * 0.9;
-        end
-
-        upShiftSpds(gearIdx, apIdx + 1) = shiftSpd;
-    end
-end
-
-% AP开度数组最前面补0，对应升挡速度与原最小AP开度对应速度相同
-accelPedalValues = [0, accelPedalValues];
-upShiftSpds(:, 1) = upShiftSpds(:, 2);
-
-% 降档点由对应升档点减去【换挡延迟】而来，换挡延迟一般取 2~8 km/h；
-% 【换挡延迟系数】为 1 表示【等延迟型】，
-% 各AP开度下换挡延迟相同；0~1 表示【收敛型】，换挡延迟随AP开度增大而减小；>1 表示
-% 【发散型】，换挡延迟随AP开度的增大而增大
-delaySpeed = 4; % 换挡延迟，(km/h)
-delaySpeedFactor = 1; % 换挡延迟系数
-delaySpeeds = zeros(1, length(accelPedalValues));
-for idx = 1:length(accelPedalValues)
-    delaySpeeds(idx) = delaySpeed * (delaySpeedFactor ^ idx);
-end
-downShiftSpds = upShiftSpds - delaySpeeds;
-
-% 绘图：动力型换挡规律
-figure('Name', "动力型换挡规律")
-hold on
-
-% 一组较为美观的预设颜色
-colors = [0, 0.4470, 0.7410; 0.8500, 0.3250, 0.0980; ...
-              0.9290, 0.6940, 0.1250; 0.4940, 0.1840, 0.5560; ...
-              0.4660, 0.6740, 0.1880; 0.3010, 0.7450, 0.9330; ...
-              0.6350, 0.0780, 0.1840];
-
-for gearIdx = 1:length(Driveline.ig) - 1
-    plot(upShiftSpds(gearIdx, :), accelPedalValues, 'Color', ...
-        colors(gearIdx, :), 'DisplayName', ...
-        num2str(gearIdx) + "-" + num2str(gearIdx + 1) + "升档线")
-    plot(downShiftSpds(gearIdx, :), accelPedalValues, '--', 'Color', ...
-        colors(gearIdx, :), 'DisplayName', ...
-        num2str(gearIdx + 1) + "-" + num2str(gearIdx) + "降档线")
-end
-
-grid on
-title("动力型换挡规律")
-xlabel("车速 / (km/h)")
-ylabel("加速踏板开度 / (%)")
-legend('Location', 'best')
 hold off
