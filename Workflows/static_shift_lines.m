@@ -69,12 +69,12 @@ plot_shift_lines(accelPedalValues, upShiftSpds, downShiftSpds, "动力型换挡�
 %% 函数
 
 function downShiftSpds = get_downshift_spds(upShiftSpds, delaySpeed, delaySpeedFactor)
-% 由升档点数组计算降挡点数组
-% :param upShiftSpds: 升档点数组，各行代表不同的踏板开度、各列代表不同的挡位
+% 由升挡点数组计算降挡点数组
+% :param upShiftSpds: 升挡点数组，各行代表不同的踏板开度、各列代表不同的挡位
 % :param delaySpeed: 换挡延迟，(km/h)，一般取 2~8
 % :param delaySpeedFactor: 换挡延迟系数，决定换挡线类型
 
-% 降档点由对应升档点减去【换挡延迟】而来，换挡延迟一般取 2~8 km/h；
+% 降挡点由对应升挡点减去【换挡延迟】而来，换挡延迟一般取 2~8 km/h；
 % 换挡延迟系数：
 %  - 1 表示【等延迟型】，各AP开度下换挡延迟相同；
 %  - 0~1 表示【收敛型】，换挡延迟随AP开度增大而减小；
@@ -82,15 +82,8 @@ function downShiftSpds = get_downshift_spds(upShiftSpds, delaySpeed, delaySpeedF
 
 arguments
     upShiftSpds {mustBeNumeric}
-    delaySpeed (1, 1) {mustBeNumeric} = 5
-    delaySpeedFactor (1, 1) {mustBeNumeric} = 1
-end
-
-if delaySpeed < 0
-    warning("delaySpeed 应为正值")
-end
-if delaySpeedFactor < 0
-    error("delaySpeedFactor 必须为正值")
+    delaySpeed (1, 1) {mustBeNumeric, mustBePositive} = 5
+    delaySpeedFactor (1, 1) {mustBeNumeric, mustBePositive} = 1
 end
 
 delaySpeeds = delaySpeed * (delaySpeedFactor .^ (1:width(upShiftSpds)));
@@ -114,10 +107,10 @@ colors = [0, 0.4470, 0.7410; 0.8500, 0.3250, 0.0980; ...
 for gearIdx = 1:height(upShiftSpds)
     plot(upShiftSpds(gearIdx, :), accelPedalValues, 'Color', ...
         colors(gearIdx, :), 'DisplayName', ...
-        num2str(gearIdx) + "-" + num2str(gearIdx + 1) + "升档线")
+        num2str(gearIdx) + "-" + num2str(gearIdx + 1) + "升挡线")
     plot(downShiftSpds(gearIdx, :), accelPedalValues, '--', 'Color', ...
         colors(gearIdx, :), 'DisplayName', ...
-        num2str(gearIdx + 1) + "-" + num2str(gearIdx) + "降档线")
+        num2str(gearIdx + 1) + "-" + num2str(gearIdx) + "降挡线")
 end
 
 grid on

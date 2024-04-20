@@ -41,8 +41,8 @@ VehicleData.Mass.NoLoad.hg = 0.895;  % 空载时质心高度，(m)
 VehicleData.Mass.NoLoad.Iyy = 3500;  % *空载绕y轴转动惯量，(kg*m²)
 
 % 满载
-VehicleData.Mass.Full.Mass = 4617;  % 满载质量，(kg)
-VehicleData.Mass.Full.a = 2.667;  % 满载时质心到前轴距离，(m)
+VehicleData.Mass.Full.Mass = 6342;  % 满载质量，(kg)
+VehicleData.Mass.Full.a = 2.357;  % 满载时质心到前轴距离，(m)
 VehicleData.Mass.Full.b = VehicleData.Wheelbase - ...
     VehicleData.Mass.Full.a;  % 满载时质心到后轴距离，(m)
 VehicleData.Mass.Full.hg = 0.910;  % 满载时质心高度，(m)
@@ -56,7 +56,7 @@ VehicleData.Wheel.RelaxationLength = 0.5;  % *松弛长度，(m)
 VehicleData.Wheel.AxleViscousDampingCoefficient = 0.001;  % *轴粘滞阻尼系数，(N*m*s/rad)
 VehicleData.Wheel.Inertia = 0.8;  % *转动惯量，(kg*m²)
 VehicleData.Wheel.Pressure = 98 * 6894.75729;  % 胎压，(Pa)
-% *魔术公式
+% *魔术公式（附着良好路面）
 VehicleData.Wheel.Dx = 1;
 VehicleData.Wheel.Cx = 1.65;
 VehicleData.Wheel.Bx = 10;

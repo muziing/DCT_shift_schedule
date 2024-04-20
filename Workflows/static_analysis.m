@@ -20,8 +20,8 @@ VehicleData.NoLoad.b = VehicleData.Wheelbase - ...
 VehicleData.NoLoad.hg = 0.895; % 空载时质心高度，(m)
 
 % 满载
-VehicleData.Full.Mass = 4617; % 满载质量，(kg)
-VehicleData.Full.a = 2.667; % 满载时质心到前轴距离，(m)
+VehicleData.Full.Mass = 6342; % 满载质量，(kg)
+VehicleData.Full.a = 2.357; % 满载时质心到前轴距离，(m)
 VehicleData.Full.b = VehicleData.Wheelbase - ...
     VehicleData.Full.a; % 满载时质心到后轴距离，(m)
 VehicleData.Full.hg = 0.910; % 满载时质心高度，(m)
@@ -50,7 +50,7 @@ MotorTrqs = MotorData.ExternalCharacteristics.Peak.torque'; % 电机转矩
 
 % 环境
 g = 9.81; % 重力加速度，(m/s²)
-RoadSlope = 0; % 道路坡度，坡高/底长
+RoadSlope = 0; % 道路坡度，(deg)
 
 % 静态轴荷
 % $F_{Zs1} =G (\frac{b}{L} \cos\alpha - \frac{h_g}{L} \sin\alpha)$
