@@ -2,6 +2,8 @@
 % 基于汽车行驶方程静态计算出的车辆运行情况，设计计算【最佳动力性换挡规律】、
 % 【最佳经济性换挡规律】以及二者拼接而成的简易【综合换挡规律】
 
+% TODO 定义一套换挡点导出的数据类型格式，并实现导出，并在模型端实现导入……
+
 static_analysis
 close all
 
@@ -17,7 +19,7 @@ accelPedalValues = [15, 30, 50, 90, 100]; % 待处理的加速踏板开度列表
 %% 计算：动力型换挡规律
 
 % 存储各挡位升挡点，行数为挡位数-1、列数为踏板开度数量+1（额外包含一列开度为0的情况）
-upShiftSpds = zeros(length(Driveline.ig) - 1, length(accelPedalValues) + 1);
+upShiftSpds_acc = zeros(length(Driveline.ig) - 1, length(accelPedalValues) + 1);
 
 for apIdx = 1:length(accelPedalValues)
     % 计算在该AP开度下，各挡位行驶加速度曲线
@@ -36,39 +38,87 @@ for apIdx = 1:length(accelPedalValues)
             shiftSpd = u_a(end, gearIdx) * 0.9;
         end
 
-        upShiftSpds(gearIdx, apIdx + 1) = shiftSpd;
+        upShiftSpds_acc(gearIdx, apIdx + 1) = shiftSpd;
     end
 end
 
 % AP开度数组最前面补0，对应升挡速度与原最小AP开度对应速度相同
-accelPedalValues = [0, accelPedalValues];
-upShiftSpds(:, 1) = upShiftSpds(:, 2);
+% accelPedalValues = [0, accelPedalValues];
+upShiftSpds_acc(:, 1) = upShiftSpds_acc(:, 2);
 
-downShiftSpds = get_downshift_spds(upShiftSpds, 4);
+downShiftSpds_acc = get_downshift_spds(upShiftSpds_acc, 4);
 
 % 绘图
-plot_shift_lines(accelPedalValues, upShiftSpds, downShiftSpds, "动力型换挡规律")
+plot_shift_lines([0, accelPedalValues], upShiftSpds_acc, downShiftSpds_acc, ...
+"动力型换挡规律")
+
+clear apIdx gearIdx accelerations shiftSpd
 
 %% 计算：经济型换挡规律
 
-% 计算电机效率-车速对应关系
+% -------------------处理效率 MAP 图-------------------
+motSpdArray = MotorData.Efficiency.RawData.Drive.speed;
+motTorArray = MotorData.Efficiency.RawData.Drive.torque;
+motEffArray = MotorData.Efficiency.RawData.Drive.systemEfficiency;
 
-% for trqIdx = 1:length(accelPedalValues)
-%
-%     motorTrqs_drive = MotorTrqs * accelPedalValues(trqIdx) / 100;
-%
-%     motorEffs = interp2(MotorData.Efficiency.Drive.Speed, ...
-%         MotorData.Efficiency.Drive.Torque, ...
-%         MotorData.Efficiency.Drive.Eff, ...
-%         MotorSpds, motorTrqs_drive); % 通过插值获取电机效率值
-%
-%     plot(u_a(:, :), motorEffs)
-%
-% end
+% 设置网格
+motSpds = min(motSpdArray):100:max(motSpdArray);
+motTors = linspace(min(motTorArray), max(motTorArray), 200);
+[gridX, gridY] = meshgrid(motSpds, motTors);
+% 将原始实验数据通过插值，调整到网格中
+motEffs = griddata(motSpdArray, motTorArray, motEffArray, gridX, gridY);
+
+% 删去临时变量，减小干扰
+clear motSpdArray motTorArray motEffArray gridX gridY
+
+% % 绘图：电机效率MAP图（三维）
+% figure("Name","电机系统效率MAP图")
+% colormap jet
+% surf(motSpds, motTors, motEffs, 'EdgeColor', 'none');
+% title("电机系统效率 MAP 图")
+% xlabel("转速(rpm)")
+% ylabel("转矩(N·m)")
+% zlabel("电机效率(%)")
+
+% -----------处理【电机转速-车速】、【电机转矩-AP踏板开度】映射-----------
+gearRatio = Driveline.i0 .* Driveline.ig; % 总传动比
+vehicleSpds = motSpds * (Wheel.UnloadedRadius * 2 * pi * 3.6) ./ ...
+    (60 * gearRatio');
+apGrid = linspace(0, 100, length(motTors));
+
+% -----------绘图：各挡位行驶工况效率图-----------
+figure("Name", "行驶工况效率图")
+colors = [0, 0.4470, 0.7410; 0.8500, 0.3250, 0.0980; ...
+              0.9290, 0.6940, 0.1250; 0.4940, 0.1840, 0.5560];
+for gearIdx = 1:length(Driveline.ig)
+    surf(vehicleSpds(gearIdx, :), apGrid, motEffs, ...
+        'EdgeColor', 'none', ...
+        'FaceColor', colors(gearIdx, :), ...
+        'DisplayName', num2str(gearIdx) + "挡")
+    hold on
+end
+title("电机系统效率 MAP 图")
+xlabel("车速(km/h)")
+ylabel("加速踏板开度(%)")
+zlabel("电机效率(%)")
+legend
+hold off
+
+% -----------求换挡点-----------
+% TODO 实现曲面交线求解代码等
+% 马上中期报告实在来不及了，先用观察法直接写出换挡点数值，后续再回来补编程实现吧
+upShiftSpds_eco = [47.74, 47.74, 41.14, 35.04, 26.92, 18.28; ...
+                       76.35, 76.35, 65.88, 56.00, 45.29, 29.65; ...
+                       110.15, 110.15, 93.87, 83.68, 68.84, 45.06; ];
+downShiftSpds_eco = get_downshift_spds(upShiftSpds_eco, 4);
+
+plot_shift_lines([0, accelPedalValues], upShiftSpds_eco, downShiftSpds_eco, ...
+"经济型换挡规律")
 
 %% 函数
 
-function downShiftSpds = get_downshift_spds(upShiftSpds, delaySpeed, delaySpeedFactor)
+function downShiftSpds = get_downshift_spds(upShiftSpds, delaySpeed, ...
+    delaySpeedFactor)
 % 由升挡点数组计算降挡点数组
 % :param upShiftSpds: 升挡点数组，各行代表不同的踏板开度、各列代表不同的挡位
 % :param delaySpeed: 换挡延迟，(km/h)，一般取 2~8
@@ -92,7 +142,8 @@ downShiftSpds = upShiftSpds - delaySpeeds;
 % end of get_downshift_spds()
 end
 
-function plot_shift_lines(accelPedalValues, upShiftSpds, downShiftSpds, figTitle)
+function plot_shift_lines(accelPedalValues, upShiftSpds, downShiftSpds, ...
+    figTitle)
 % 绘制换挡线
 
 figure('Name', figTitle)
