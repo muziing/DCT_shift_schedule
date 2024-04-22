@@ -19,15 +19,16 @@ accelPedalValues = [15, 30, 50, 90, 100]; % 待处理的加速踏板开度列表
 %% 计算：动力型换挡规律
 
 % 存储各挡位升挡点，行数为挡位数-1、列数为踏板开度数量+1（额外包含一列开度为0的情况）
-upShiftSpds_acc = zeros(length(Driveline.ig) - 1, length(accelPedalValues) + 1);
+upShiftSpds_acc = zeros(length(VehicleData.Driveline.ig) - 1, ...
+    length(accelPedalValues) + 1);
 
 for apIdx = 1:length(accelPedalValues)
     % 计算在该AP开度下，各挡位行驶加速度曲线
     accelerations = ((F_t * accelPedalValues(apIdx) / 100) - (F_f + F_w + F_i)) ./ ...
-        (delta * VehicleData.NoLoad.Mass);
+        (VehicleData.delta * VehicleData.Body.NoLoad.Mass);
     accelerations(accelerations < 0) = NaN; % 舍弃计算出的负值加速度
 
-    for gearIdx = 1:(length(Driveline.ig) - 1)
+    for gearIdx = 1:(length(VehicleData.Driveline.ig) - 1)
         % 求解相邻挡位加速度曲线交点
         [shiftSpd, ~] = intersections(u_a(:, gearIdx), ...
             accelerations(:, gearIdx), u_a(:, gearIdx + 1), ...
@@ -81,8 +82,8 @@ clear motSpdArray motTorArray motEffArray gridX gridY
 % zlabel("电机效率(%)")
 
 % -----------处理【电机转速-车速】、【电机转矩-AP踏板开度】映射-----------
-gearRatio = Driveline.i0 .* Driveline.ig; % 总传动比
-vehicleSpds = motSpds * (Wheel.UnloadedRadius * 2 * pi * 3.6) ./ ...
+gearRatio = VehicleData.Driveline.i0 .* VehicleData.Driveline.ig; % 总传动比
+vehicleSpds = motSpds * (VehicleData.Wheel.UnloadedRadius * 2 * pi * 3.6) ./ ...
     (60 * gearRatio');
 apGrid = linspace(0, 100, length(motTors));
 
@@ -90,14 +91,14 @@ apGrid = linspace(0, 100, length(motTors));
 figure("Name", "行驶工况效率图")
 colors = [0, 0.4470, 0.7410; 0.8500, 0.3250, 0.0980; ...
               0.9290, 0.6940, 0.1250; 0.4940, 0.1840, 0.5560];
-for gearIdx = 1:length(Driveline.ig)
+for gearIdx = 1:length(VehicleData.Driveline.ig)
     surf(vehicleSpds(gearIdx, :), apGrid, motEffs, ...
         'EdgeColor', 'none', ...
         'FaceColor', colors(gearIdx, :), ...
         'DisplayName', num2str(gearIdx) + "挡")
     hold on
 end
-title("电机系统效率 MAP 图")
+title("行驶工况效率图")
 xlabel("车速(km/h)")
 ylabel("加速踏板开度(%)")
 zlabel("电机效率(%)")
@@ -114,6 +115,8 @@ downShiftSpds_eco = get_downshift_spds(upShiftSpds_eco, 4);
 
 plot_shift_lines([0, accelPedalValues], upShiftSpds_eco, downShiftSpds_eco, ...
 "经济型换挡规律")
+
+clear vehicleSpds colors
 
 %% 函数
 

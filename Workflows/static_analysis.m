@@ -6,71 +6,72 @@ clc
 %% 车辆数据
 
 % 整车外廓
-VehicleData.Wheelbase = 4.390; % 轴距，(m)
-VehicleData.TrackwidthF = 1.918; % 前轴轮距，(m)
-VehicleData.TrackwidthR = 1.958; % 后轴轮距，(m)
-VehicleData.FrontalArea = 4.64; % 迎风面积，(m²)
-VehicleData.Cd = 0.372; % 风阻系数
+VehicleData.Body.Wheelbase = 4.390; % 轴距，(m)
+VehicleData.Body.TrackwidthF = 1.918; % 前轴轮距，(m)
+VehicleData.Body.TrackwidthR = 1.958; % 后轴轮距，(m)
+VehicleData.Body.FrontalArea = 4.64; % 迎风面积，(m²)
+VehicleData.Body.Cd = 0.372; % 风阻系数
 
 % 空载
-VehicleData.NoLoad.Mass = 4617; % 空载质量，(kg)
-VehicleData.NoLoad.a = 2.667; % 空载时质心到前轴距离，(m)
-VehicleData.NoLoad.b = VehicleData.Wheelbase - ...
-    VehicleData.NoLoad.a; % 空载时质心到后轴距离，(m)
-VehicleData.NoLoad.hg = 0.895; % 空载时质心高度，(m)
+VehicleData.Body.NoLoad.Mass = 4617; % 空载质量，(kg)
+VehicleData.Body.NoLoad.a = 2.667; % 空载时质心到前轴距离，(m)
+VehicleData.Body.NoLoad.b = VehicleData.Body.Wheelbase - ...
+    VehicleData.Body.NoLoad.a; % 空载时质心到后轴距离，(m)
+VehicleData.Body.NoLoad.hg = 0.895; % 空载时质心高度，(m)
 
 % 满载
-VehicleData.Full.Mass = 6342; % 满载质量，(kg)
-VehicleData.Full.a = 2.357; % 满载时质心到前轴距离，(m)
-VehicleData.Full.b = VehicleData.Wheelbase - ...
-    VehicleData.Full.a; % 满载时质心到后轴距离，(m)
-VehicleData.Full.hg = 0.910; % 满载时质心高度，(m)
+VehicleData.Body.Full.Mass = 6342; % 满载质量，(kg)
+VehicleData.Body.Full.a = 2.357; % 满载时质心到前轴距离，(m)
+VehicleData.Body.Full.b = VehicleData.Body.Wheelbase - ...
+    VehicleData.Body.Full.a; % 满载时质心到后轴距离，(m)
+VehicleData.Body.Full.hg = 0.910; % 满载时质心高度，(m)
 
 % 车轮
-Wheel.LoadedRadius = 0.357; % 负载半径，(m)
-Wheel.UnloadedRadius = 0.370; % 无负载半径，(m)
-Wheel.Inertia = 0.8; % 转动惯量，(kg*m²)
-Wheel.Pressure = 98 * 6894.75729; % 胎压，(Pa)
+VehicleData.Wheel.LoadedRadius = 0.357; % 负载半径，(m)
+VehicleData.Wheel.UnloadedRadius = 0.370; % 无负载半径，(m)
+VehicleData.Wheel.Inertia = 0.8; % 转动惯量，(kg*m²)
+VehicleData.Wheel.Pressure = 98 * 6894.75729; % 胎压，(Pa)
 % 车轮魔术公式（附着良好路面）
-Wheel.Dx = 1;
-Wheel.Cx = 1.65;
-Wheel.Bx = 10;
-Wheel.Ex = 0.01;
+VehicleData.Wheel.Dx = 1;
+VehicleData.Wheel.Cx = 1.65;
+VehicleData.Wheel.Bx = 10;
+VehicleData.Wheel.Ex = 0.01;
 
 % 传动系
-Driveline.i0 = 37/7; % 主减速器传动比
-Driveline.ig = [55/16, 53/25, 53/38, 46/45] * 65/43; % 变速器各挡位传动比
-Driveline.EffEta = 0.88; % 总传动效率
-Driveline.Str = ["1挡", "2挡", "3挡", "4挡"];
+VehicleData.Driveline.i0 = 37/7; % 主减速器传动比
+VehicleData.Driveline.ig = [55/16, 53/25, 53/38, 46/45] * 65/43; % 变速器各挡位传动比
+VehicleData.Driveline.EffEta = 0.88; % 总传动效率
+VehicleData.Driveline.Str = ["1挡", "2挡", "3挡", "4挡"];
 
 % 电机外特性
 load("../Data/MotorData.mat")
-MotorSpds = MotorData.ExternalCharacteristics.Peak.rpm'; % 电机转速
-MotorTrqs = MotorData.ExternalCharacteristics.Peak.torque'; % 电机转矩
+motSpds = MotorData.ExternalCharacteristics.Peak.rpm'; % 电机转速
+motTrqs = MotorData.ExternalCharacteristics.Peak.torque'; % 电机转矩
 
 % 环境
 g = 9.81; % 重力加速度，(m/s²)
 RoadSlope = 0; % 道路坡度，(deg)
 
-% 静态轴荷
-% $F_{Zs1} =G (\frac{b}{L} \cos\alpha - \frac{h_g}{L} \sin\alpha)$
-% $F_{Zs2} =G (\frac{a}{L} \cos\alpha - \frac{h_g}{L} \sin\alpha)$
-G = VehicleData.NoLoad.Mass * g; % 整车重力
+% 静态轴荷的法向反作用力：汽车重力分配到前、后轴的分量产生的地面法向反作用力
+% $F_{Zs1} = G (\frac{b}{L} \cos\alpha - \frac{h_g}{L} \sin\alpha)$
+% $F_{Zs2} = G (\frac{a}{L} \cos\alpha - \frac{h_g}{L} \sin\alpha)$
+G = VehicleData.Body.NoLoad.Mass * g; % 整车重力
 W_front = G * ...
-    (VehicleData.NoLoad.b / VehicleData.Wheelbase * cos(RoadSlope) - ...
-    VehicleData.NoLoad.hg / VehicleData.Wheelbase * sin(RoadSlope));
+    (VehicleData.Body.NoLoad.b / VehicleData.Body.Wheelbase * cos(RoadSlope) - ...
+    VehicleData.Body.NoLoad.hg / VehicleData.Body.Wheelbase * sin(RoadSlope));
 W_rear = G * ...
-    (VehicleData.NoLoad.a / VehicleData.Wheelbase * cos(RoadSlope) + ...
-    VehicleData.NoLoad.hg / VehicleData.Wheelbase * sin(RoadSlope));
+    (VehicleData.Body.NoLoad.a / VehicleData.Body.Wheelbase * cos(RoadSlope) + ...
+    VehicleData.Body.NoLoad.hg / VehicleData.Body.Wheelbase * sin(RoadSlope));
 
 %% 驱动力
 
 % $F_t = \frac{T_{tq} i_g i_0 \eta_T}{r}$
 
-F_t = (MotorTrqs' .* Driveline.ig .* Driveline.i0 .* Driveline.EffEta) ...
-    ./ Wheel.LoadedRadius; % 驱动力数组（二维）
-u_a = 0.377 * (Wheel.UnloadedRadius * MotorSpds') ./ ...
-    (Driveline.ig .* Driveline.i0); % 车速数组（二维）
+F_t = (motTrqs' .* VehicleData.Driveline.ig .* VehicleData.Driveline.i0 ...
+    .* VehicleData.Driveline.EffEta) ...
+    ./ VehicleData.Wheel.LoadedRadius; % 驱动力数组（二维）
+u_a = 0.377 * (VehicleData.Wheel.UnloadedRadius * motSpds') ./ ...
+    (VehicleData.Driveline.ig .* VehicleData.Driveline.i0); % 车速数组（二维）
 u_a_1d = sort(u_a(:)); % 将二维数组 u_a 转成有序的一维数组，便于后续使用
 
 %% 滚动阻力
@@ -96,14 +97,14 @@ F_f = W_front * rollingResistance_f + W_rear * rollingResistance_f;
 % 一般公式：$F_w = 1/2 C_D A \rho u_r^2$
 % 无风条件、u_a单位km/h、A单位m^2：$F_w = \frac{C_D A u_a^2}{21.15}$
 
-F_w = VehicleData.Cd * VehicleData.FrontalArea * (u_a .^ 2) / 21.15;
+F_w = VehicleData.Body.Cd * VehicleData.Body.FrontalArea * (u_a .^ 2) / 21.15;
 
 %% 坡度阻力
 
 % 当汽车上坡行驶时，汽车重力沿坡道的分力表现为汽车坡度阻力
 % $F_i = G \sin(\alpha)$
 
-F_i = VehicleData.NoLoad.Mass * g * sin(RoadSlope);
+F_i = VehicleData.Body.NoLoad.Mass * g * sin(RoadSlope);
 
 %% 加速阻力
 
@@ -113,8 +114,9 @@ F_i = VehicleData.NoLoad.Mass * g * sin(RoadSlope);
 % 其中，δ为汽车旋转质量换算系数，实现将旋转质量（如车轮）的惯性力偶转化为
 % 平移质量的惯性力，便于计算
 
-delta = [1.29, 1.14, 1.07, 1.05]; % 旋转质量换算系数δ，由查表得到估计值
-% F_j = delta * VehicleData.NoLoad.Mass * acceleration;
+% 旋转质量换算系数δ，由查表得到估计值
+VehicleData.delta = [1.29, 1.14, 1.07, 1.05];
+% F_j = VehicleData.delta * VehicleData.Body.NoLoad.Mass * acceleration;
 
 %% 绘图：驱动力-行驶阻力平衡图
 
@@ -134,7 +136,7 @@ title("驱动力-行驶阻力平衡图")
 xlabel("u_a / (km/h)")
 ylabel("F_t / N")
 xlim tight
-legend([Driveline.Str, "F_f + F_w", "{u_a}_{max}"], ...
+legend([VehicleData.Driveline.Str, "F_f + F_w", "{u_a}_{max}"], ...
     'Location', 'northeast')
 hold off
 
@@ -145,7 +147,7 @@ hold off
 % \frac{1}{\delta m} [F_t - (F_f + F_w + F_i)]$
 
 accelerations = (F_t - (F_f + F_w + F_i)) ./ ...
-    (delta * VehicleData.NoLoad.Mass);
+    (VehicleData.delta * VehicleData.Body.NoLoad.Mass);
 accelerations(accelerations < 0) = NaN; % 舍弃计算出的负值加速度
 
 figure('Name', "行驶加速度曲线图")
@@ -155,9 +157,9 @@ plot(u_a, accelerations)
 
 % 遍历求解所有换挡点速度
 % 换挡点求解详情见 <static_shift_lines.m>
-% gear_spd = zeros(length(Driveline.ig) - 1, 1);
-% gear_acc = zeros(length(Driveline.ig) - 1, 1);
-% for gearIdx = 1:(length(Driveline.ig) - 1)
+% gear_spd = zeros(length(VehicleData.Driveline.ig) - 1, 1);
+% gear_acc = zeros(length(VehicleData.Driveline.ig) - 1, 1);
+% for gearIdx = 1:(length(VehicleData.Driveline.ig) - 1)
 %     [gear_spd(gearIdx), gear_acc(gearIdx)] = intersections(u_a(:, gearIdx), ...
 %         acceleration(:, gearIdx), u_a(:, gearIdx + 1), ...
 %         acceleration(:, gearIdx + 1), false);
@@ -168,6 +170,6 @@ plot(u_a, accelerations)
 title("行驶加速度曲线")
 xlabel("u_a / (km/h)")
 ylabel("a / (m/s^2)")
-legend(Driveline.Str, 'Location', 'northeast')
+legend(VehicleData.Driveline.Str, 'Location', 'northeast')
 
 hold off
