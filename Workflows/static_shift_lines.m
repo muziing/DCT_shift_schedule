@@ -2,8 +2,6 @@
 % 基于汽车行驶方程静态计算出的车辆运行情况，设计计算【最佳动力性换挡规律】、
 % 【最佳经济性换挡规律】以及二者拼接而成的简易【综合换挡规律】
 
-% TODO 定义一套换挡点导出的数据类型格式，并实现导出，并在模型端实现导入……
-
 static_analysis
 close all
 
@@ -15,12 +13,12 @@ close all
 % TODO 通过双列数组指明这种对应关系
 
 accelPedalValues = [15, 30, 50, 90, 100]; % 待处理的加速踏板开度列表
+gearCount = length(VehicleData.Driveline.ig); % 挡位数
 
-%% 计算：动力型换挡规律
+%% 动力型换挡规律
 
 % 存储各挡位升挡点，行数为挡位数-1、列数为踏板开度数量+1（额外包含一列开度为0的情况）
-upShiftSpds_acc = zeros(length(VehicleData.Driveline.ig) - 1, ...
-    length(accelPedalValues) + 1);
+upShiftSpds_acc = zeros(gearCount - 1, length(accelPedalValues) + 1);
 
 for apIdx = 1:length(accelPedalValues)
     % 计算在该AP开度下，各挡位行驶加速度曲线
@@ -28,7 +26,7 @@ for apIdx = 1:length(accelPedalValues)
         (VehicleData.delta * VehicleData.Body.NoLoad.Mass);
     accelerations(accelerations < 0) = NaN; % 舍弃计算出的负值加速度
 
-    for gearIdx = 1:(length(VehicleData.Driveline.ig) - 1)
+    for gearIdx = 1:(gearCount - 1)
         % 求解相邻挡位加速度曲线交点
         [shiftSpd, ~] = intersections(u_a(:, gearIdx), ...
             accelerations(:, gearIdx), u_a(:, gearIdx + 1), ...
@@ -49,13 +47,19 @@ upShiftSpds_acc(:, 1) = upShiftSpds_acc(:, 2);
 
 downShiftSpds_acc = get_downshift_spds(upShiftSpds_acc, 4);
 
+% 整理与导出设计结果
+shiftSchedule_acc.upSpds = upShiftSpds_acc;
+shiftSchedule_acc.downSpds = downShiftSpds_acc;
+shiftSchedule_acc.upAPs = [0, accelPedalValues];
+shiftSchedule_acc.downAPs = [0, accelPedalValues];
+shiftSchedule_acc.description = "动力型换挡规律";
+
 % 绘图
-plot_shift_lines([0, accelPedalValues], upShiftSpds_acc, downShiftSpds_acc, ...
-"动力型换挡规律")
+plot_shift_lines(shiftSchedule_acc)
 
-clear apIdx gearIdx accelerations shiftSpd
+clear apIdx gearIdx accelerations shiftSpd upShiftSpds_acc downShiftSpds_acc
 
-%% 计算：经济型换挡规律
+%% 经济型换挡规律
 
 % -------------------处理效率 MAP 图-------------------
 motSpdArray = MotorData.Efficiency.RawData.Drive.speed;
@@ -91,7 +95,7 @@ apGrid = linspace(0, 100, length(motTors));
 figure("Name", "行驶工况效率图")
 colors = [0, 0.4470, 0.7410; 0.8500, 0.3250, 0.0980; ...
               0.9290, 0.6940, 0.1250; 0.4940, 0.1840, 0.5560];
-for gearIdx = 1:length(VehicleData.Driveline.ig)
+for gearIdx = 1:gearCount
     surf(vehicleSpds(gearIdx, :), apGrid, motEffs, ...
         'EdgeColor', 'none', ...
         'FaceColor', colors(gearIdx, :), ...
@@ -113,10 +117,30 @@ upShiftSpds_eco = [47.74, 47.74, 41.14, 35.04, 26.92, 18.28; ...
                        110.15, 110.15, 93.87, 83.68, 68.84, 45.06; ];
 downShiftSpds_eco = get_downshift_spds(upShiftSpds_eco, 4);
 
-plot_shift_lines([0, accelPedalValues], upShiftSpds_eco, downShiftSpds_eco, ...
-"经济型换挡规律")
+% 整理与导出设计结果
+shiftSchedule_eco.upSpds = upShiftSpds_eco;
+shiftSchedule_eco.downSpds = downShiftSpds_eco;
+shiftSchedule_eco.upAPs = [0, accelPedalValues];
+shiftSchedule_eco.downAPs = [0, accelPedalValues];
+shiftSchedule_eco.description = "经济型换挡规律";
 
-clear vehicleSpds colors
+% 绘图
+plot_shift_lines(shiftSchedule_eco)
+
+clear vehicleSpds colors upShiftSpds_eco downShiftSpds_eco
+
+%% 综合换挡规律
+% 在前面两个小节中，完成了最佳动力性、最佳经济性两种换挡规律的设计。
+% 然而这两种规律都太过极端，难以满足实际驾驶需求。一般地，加速踏板开度较小时，
+% 体现驾驶员对动力性需求很小，应侧重于经济性；加速踏板开度很大时，体现驾驶员急需
+% 尽可能好的加速性能。故通过简单地将两种换挡规律拼接，在加速踏板开度小于 40% 部分
+% 使用经济型换挡规律、在加速踏板开度大于 40% 部分使用动力型换挡规律，可以得到一种
+% 综合型换挡规律。将该规律作为基准，用于评估后续的换挡规律优化效果。
+
+%% 导出设计结果
+
+save("../Data/ShiftSchedules.mat", "shiftSchedule_acc", "shiftSchedule_eco", ...
+"-v7.3")
 
 %% 函数
 
@@ -145,11 +169,10 @@ downShiftSpds = upShiftSpds - delaySpeeds;
 % end of get_downshift_spds()
 end
 
-function plot_shift_lines(accelPedalValues, upShiftSpds, downShiftSpds, ...
-    figTitle)
+function plot_shift_lines(shiftSchedule)
 % 绘制换挡线
 
-figure('Name', figTitle)
+figure('Name', shiftSchedule.description)
 hold on
 
 % 一组较为美观的预设颜色
@@ -158,17 +181,17 @@ colors = [0, 0.4470, 0.7410; 0.8500, 0.3250, 0.0980; ...
               0.4660, 0.6740, 0.1880; 0.3010, 0.7450, 0.9330; ...
               0.6350, 0.0780, 0.1840];
 
-for gearIdx = 1:height(upShiftSpds)
-    plot(upShiftSpds(gearIdx, :), accelPedalValues, 'Color', ...
+for gearIdx = 1:height(shiftSchedule.upSpds)
+    plot(shiftSchedule.upSpds(gearIdx, :), shiftSchedule.upAPs, 'Color', ...
         colors(gearIdx, :), 'DisplayName', ...
         num2str(gearIdx) + "-" + num2str(gearIdx + 1) + "升挡线")
-    plot(downShiftSpds(gearIdx, :), accelPedalValues, '--', 'Color', ...
+    plot(shiftSchedule.downSpds(gearIdx, :), shiftSchedule.downAPs, '--', 'Color', ...
         colors(gearIdx, :), 'DisplayName', ...
         num2str(gearIdx + 1) + "-" + num2str(gearIdx) + "降挡线")
 end
 
 grid on
-title(figTitle)
+title(shiftSchedule.description)
 xlabel("车速 / (km/h)")
 ylabel("加速踏板开度 / (%)")
 legend('Location', 'best')
