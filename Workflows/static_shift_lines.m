@@ -48,11 +48,12 @@ upShiftSpds_acc(:, 1) = upShiftSpds_acc(:, 2);
 downShiftSpds_acc = get_downshift_spds(upShiftSpds_acc, 4);
 
 % 整理与导出设计结果
-shiftSchedule_acc.upSpds = upShiftSpds_acc;
-shiftSchedule_acc.downSpds = downShiftSpds_acc;
-shiftSchedule_acc.upAPs = [0, accelPedalValues];
-shiftSchedule_acc.downAPs = [0, accelPedalValues];
-shiftSchedule_acc.description = "动力型换挡规律";
+shiftSchedule_acc = ShiftSchedule;
+shiftSchedule_acc.UpSpds = upShiftSpds_acc;
+shiftSchedule_acc.DownSpds = downShiftSpds_acc;
+shiftSchedule_acc.UpAPs = [0, accelPedalValues];
+shiftSchedule_acc.DownAPs = [0, accelPedalValues];
+shiftSchedule_acc.Description = "动力型换挡规律";
 
 % 绘图
 plot_shift_lines(shiftSchedule_acc)
@@ -118,11 +119,12 @@ upShiftSpds_eco = [47.74, 47.74, 41.14, 35.04, 26.92, 18.28; ...
 downShiftSpds_eco = get_downshift_spds(upShiftSpds_eco, 4);
 
 % 整理与导出设计结果
-shiftSchedule_eco.upSpds = upShiftSpds_eco;
-shiftSchedule_eco.downSpds = downShiftSpds_eco;
-shiftSchedule_eco.upAPs = [0, accelPedalValues];
-shiftSchedule_eco.downAPs = [0, accelPedalValues];
-shiftSchedule_eco.description = "经济型换挡规律";
+shiftSchedule_eco = ShiftSchedule;
+shiftSchedule_eco.UpSpds = upShiftSpds_eco;
+shiftSchedule_eco.DownSpds = downShiftSpds_eco;
+shiftSchedule_eco.UpAPs = [0, accelPedalValues];
+shiftSchedule_eco.DownAPs = [0, accelPedalValues];
+shiftSchedule_eco.Description = "经济型换挡规律";
 
 % 绘图
 plot_shift_lines(shiftSchedule_eco)
@@ -147,9 +149,9 @@ save("../Data/ShiftSchedules.mat", "shiftSchedule_acc", "shiftSchedule_eco", ...
 function downShiftSpds = get_downshift_spds(upShiftSpds, delaySpeed, ...
     delaySpeedFactor)
 % 由升挡点数组计算降挡点数组
-% :param upShiftSpds: 升挡点数组，各行代表不同的踏板开度、各列代表不同的挡位
-% :param delaySpeed: 换挡延迟，(km/h)，一般取 2~8
-% :param delaySpeedFactor: 换挡延迟系数，决定换挡线类型
+%   upShiftSpds: 升挡点数组，各行代表不同的踏板开度、各列代表不同的挡位
+%   delaySpeed: 换挡延迟，(km/h)，一般取 2~8
+%   delaySpeedFactor: 换挡延迟系数，决定换挡线类型
 
 % 降挡点由对应升挡点减去【换挡延迟】而来，换挡延迟一般取 2~8 km/h；
 % 换挡延迟系数：
@@ -171,8 +173,13 @@ end
 
 function plot_shift_lines(shiftSchedule)
 % 绘制换挡线
+%   shiftSchedule: 换挡规律
 
-figure('Name', shiftSchedule.description)
+arguments
+    shiftSchedule ShiftSchedule
+end
+
+figure('Name', shiftSchedule.Description)
 hold on
 
 % 一组较为美观的预设颜色
@@ -181,17 +188,17 @@ colors = [0, 0.4470, 0.7410; 0.8500, 0.3250, 0.0980; ...
               0.4660, 0.6740, 0.1880; 0.3010, 0.7450, 0.9330; ...
               0.6350, 0.0780, 0.1840];
 
-for gearIdx = 1:height(shiftSchedule.upSpds)
-    plot(shiftSchedule.upSpds(gearIdx, :), shiftSchedule.upAPs, 'Color', ...
+for gearIdx = 1:height(shiftSchedule.UpSpds)
+    plot(shiftSchedule.UpSpds(gearIdx, :), shiftSchedule.UpAPs, 'Color', ...
         colors(gearIdx, :), 'DisplayName', ...
         num2str(gearIdx) + "-" + num2str(gearIdx + 1) + "升挡线")
-    plot(shiftSchedule.downSpds(gearIdx, :), shiftSchedule.downAPs, '--', 'Color', ...
-        colors(gearIdx, :), 'DisplayName', ...
+    plot(shiftSchedule.DownSpds(gearIdx, :), shiftSchedule.DownAPs, '--', ...
+        'Color', colors(gearIdx, :), 'DisplayName', ...
         num2str(gearIdx + 1) + "-" + num2str(gearIdx) + "降挡线")
 end
 
 grid on
-title(shiftSchedule.description)
+title(shiftSchedule.Description)
 xlabel("车速 / (km/h)")
 ylabel("加速踏板开度 / (%)")
 legend('Location', 'best')
