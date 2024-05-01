@@ -1,6 +1,6 @@
 % 基于汽车行驶方程式的简单静态分析计算
 
-clear
+% clear
 clc
 
 %% 车辆数据
@@ -44,7 +44,7 @@ VehicleData.Driveline.EffEta = 0.88; % 总传动效率
 VehicleData.Driveline.Str = ["1挡", "2挡", "3挡", "4挡"];
 
 % 电机外特性
-load("../Data/MotorData.mat")
+load("MotorData.mat")
 motSpds = MotorData.ExternalCharacteristics.Peak.rpm'; % 电机转速
 motTrqs = MotorData.ExternalCharacteristics.Peak.torque'; % 电机转矩
 
@@ -173,3 +173,8 @@ ylabel("a / (m/s^2)")
 legend(VehicleData.Driveline.Str, 'Location', 'northeast')
 
 hold off
+
+%% 收尾清理
+
+clear g RoadSlope G
+clear u_a_1d W_front W_rear rollingResistance_f maxSpd_F

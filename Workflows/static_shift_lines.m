@@ -64,18 +64,16 @@ clear apIdx gearIdx accelerations shiftSpd upShiftSpds_acc downShiftSpds_acc
 
 % -------------------处理效率 MAP 图-------------------
 motSpdArray = MotorData.Efficiency.RawData.Drive.speed;
-motTorArray = MotorData.Efficiency.RawData.Drive.torque;
+motTrqArray = MotorData.Efficiency.RawData.Drive.torque;
 motEffArray = MotorData.Efficiency.RawData.Drive.systemEfficiency;
 
 % 设置网格
 motSpds = min(motSpdArray):100:max(motSpdArray);
-motTors = linspace(min(motTorArray), max(motTorArray), 200);
-[gridX, gridY] = meshgrid(motSpds, motTors);
+motTrqs = linspace(min(motTrqArray), max(motTrqArray), 200);
+[gridX, gridY] = meshgrid(motSpds, motTrqs);
 % 将原始实验数据通过插值，调整到网格中
-motEffs = griddata(motSpdArray, motTorArray, motEffArray, gridX, gridY);
-
-% 删去临时变量，减小干扰
-clear motSpdArray motTorArray motEffArray gridX gridY
+motEffs = griddata(motSpdArray, motTrqArray, motEffArray, gridX, gridY);
+clear motSpdArray motTrqArray motEffArray gridX gridY
 
 % % 绘图：电机效率MAP图（三维）
 % figure("Name","电机系统效率MAP图")
@@ -90,7 +88,7 @@ clear motSpdArray motTorArray motEffArray gridX gridY
 gearRatio = VehicleData.Driveline.i0 .* VehicleData.Driveline.ig; % 总传动比
 vehicleSpds = motSpds * (VehicleData.Wheel.UnloadedRadius * 2 * pi * 3.6) ./ ...
     (60 * gearRatio');
-apGrid = linspace(0, 100, length(motTors));
+apGrid = linspace(0, 100, length(motTrqs));
 
 % -----------绘图：各挡位行驶工况效率图-----------
 figure("Name", "行驶工况效率图")
@@ -129,7 +127,8 @@ shiftSchedule_eco.Description = "经济型换挡规律";
 % 绘图
 plot_shift_lines(shiftSchedule_eco)
 
-clear vehicleSpds colors upShiftSpds_eco downShiftSpds_eco
+clear motSpds motTrqs motEffs apGrid gearRatio
+clear gearIdx vehicleSpds colors upShiftSpds_eco downShiftSpds_eco
 
 %% 综合换挡规律
 % 在前面两个小节中，完成了最佳动力性、最佳经济性两种换挡规律的设计。
@@ -138,9 +137,13 @@ clear vehicleSpds colors upShiftSpds_eco downShiftSpds_eco
 % 尽可能好的加速性能。故通过简单地将两种换挡规律拼接，在加速踏板开度小于 40% 部分
 % 使用经济型换挡规律、在加速踏板开度大于 40% 部分使用动力型换挡规律，可以得到一种
 % 综合型换挡规律。将该规律作为基准，用于评估后续的换挡规律优化效果。
+% TODO 计算综合换挡规律
 
-%% 导出设计结果
+%% 导出设计结果与清理
 
+clear accelPedalValues gearCount
+
+% TODO 优化相对路径处理
 save("../Data/ShiftSchedules.mat", "shiftSchedule_acc", "shiftSchedule_eco", ...
 "-v7.3")
 
@@ -176,7 +179,7 @@ function plot_shift_lines(shiftSchedule)
 %   shiftSchedule: 换挡规律
 
 arguments
-    shiftSchedule ShiftSchedule
+    shiftSchedule (1, 1) ShiftSchedule
 end
 
 figure('Name', shiftSchedule.Description)
