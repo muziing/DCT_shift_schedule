@@ -3,8 +3,8 @@ function result = get_consec_below_thold(data, threshold)
 %   若找到则返回索引，否则返回 NaN
 
 arguments
-    data (1, :) {mustBeNumeric}
-    threshold (1, 1) {mustBeNumeric}
+    data (1, :) {mustBeNumeric} % 待查找向量
+    threshold (1, 1) {mustBeNumeric} % 阈值
 end
 
 if isempty(data)

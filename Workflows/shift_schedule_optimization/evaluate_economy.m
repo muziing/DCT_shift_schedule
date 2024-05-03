@@ -1,14 +1,11 @@
 function economyScores = evaluate_economy(shiftSchedules, parallel, doPlot)
 %EVALUATE_ECONOMY  运行给定仿真对象，评估经济性
-%   对传入的仿真结果进行分析，评估经济性得分
-%   shiftSchedules: 换挡规律（数组）
-%   parallel: 是否并行仿真
-%   doPlot: 是否进行绘图
+%   对传入的换挡规律进行仿真与结果分析，评估经济性得分，值越小经济性越好
 
 arguments
-    shiftSchedules (1, :) ShiftSchedule
-    parallel (1, 1) {mustBeNumericOrLogical} = false
-    doPlot (1, 1) {mustBeNumericOrLogical} = false
+    shiftSchedules (1, :) ShiftSchedule % 换挡规律
+    parallel (1, 1) {mustBeNumericOrLogical} = false % 是否并行仿真
+    doPlot (1, 1) {mustBeNumericOrLogical} = false % 是否进行绘图
 end
 
 %% 创建仿真任务对象

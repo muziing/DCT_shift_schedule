@@ -35,7 +35,7 @@ yticks(0:20:260)
 
 grid on
 legend('Location', 'best')
-title("电机外特性曲线图")
+title("驱动电机外特性曲线图")
 
 hold off
 
@@ -66,8 +66,8 @@ title("电机系统效率 MAP 图（电动）")
 xlabel("转速(rpm)")
 ylabel("转矩(N·m)")
 
-% clear motSpdArray motTorArray motEffArray gridX gridY
-% clear motEff levelList labelLevelList C h
+clear motSpdArray motTorArray motEffArray gridX gridY
+clear motEff levelList labelLevelList C h
 
 %% 效率 MAP 图（馈电）
 motSpdArray = MotorData.Efficiency.RawData.Feed.speed;

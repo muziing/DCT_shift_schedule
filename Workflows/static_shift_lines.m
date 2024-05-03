@@ -163,23 +163,21 @@ function downShiftSpds = get_downshift_spds(upShiftSpds, delaySpeed, ...
 %  - >1 表示【发散型】，换挡延迟随AP开度的增大而增大
 
 arguments
-    upShiftSpds {mustBeNumeric}
-    delaySpeed (1, 1) {mustBeNumeric, mustBePositive} = 5
-    delaySpeedFactor (1, 1) {mustBeNumeric, mustBePositive} = 1
+    upShiftSpds {mustBeNumeric} % 升挡点数组
+    delaySpeed (1, 1) {mustBeNumeric, mustBePositive} = 5 % 换挡延迟
+    delaySpeedFactor (1, 1) {mustBeNumeric, mustBePositive} = 1 % 换挡延迟系数
 end
 
 delaySpeeds = delaySpeed * (delaySpeedFactor .^ (1:width(upShiftSpds)));
 downShiftSpds = upShiftSpds - delaySpeeds;
 
-% end of get_downshift_spds()
 end
 
 function plot_shift_lines(shiftSchedule)
 % 绘制换挡线
-%   shiftSchedule: 换挡规律
 
 arguments
-    shiftSchedule (1, 1) ShiftSchedule
+    shiftSchedule (1, 1) ShiftSchedule % 换挡规律
 end
 
 figure('Name', shiftSchedule.Description)
@@ -190,6 +188,10 @@ colors = [0, 0.4470, 0.7410; 0.8500, 0.3250, 0.0980; ...
               0.9290, 0.6940, 0.1250; 0.4940, 0.1840, 0.5560; ...
               0.4660, 0.6740, 0.1880; 0.3010, 0.7450, 0.9330; ...
               0.6350, 0.0780, 0.1840];
+
+if height(shiftSchedule.UpSpds) > height(colors)
+    error("预设颜色数不足，无法绘图")
+end
 
 for gearIdx = 1:height(shiftSchedule.UpSpds)
     plot(shiftSchedule.UpSpds(gearIdx, :), shiftSchedule.UpAPs, 'Color', ...
@@ -207,5 +209,4 @@ ylabel("加速踏板开度 / (%)")
 legend('Location', 'best')
 hold off
 
-% end of plot_shift_lines()
 end
