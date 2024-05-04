@@ -1,6 +1,6 @@
 function economyScores = evaluate_economy(shiftSchedules, parallel, doPlot)
-%EVALUATE_ECONOMY  运行给定仿真对象，评估经济性
-%   对传入的换挡规律进行仿真与结果分析，评估经济性得分，值越小经济性越好
+%EVALUATE_ECONOMY  评估给定换挡参数的经济性
+%   对传入的换挡规律进行仿真与结果分析以评估经济性得分，值越小经济性越好
 
 arguments
     shiftSchedules (1, :) ShiftSchedule % 换挡规律
@@ -13,13 +13,19 @@ taskCount = length(shiftSchedules);
 simIns = simin_factory(shiftSchedules, "WLTC_class_2");
 
 %% 运行仿真
-% TODO 加异常处理
-if ~parallel || taskCount < 2
-    % 串行仿真
-    simOut = sim(simIns);
-else
-    % 并行仿真
-    simOut = parsim(simIns);
+try
+    if ~parallel || taskCount < 2
+        % 串行仿真
+        simOut = sim(simIns);
+    else
+        % 并行仿真
+        simOut = parsim(simIns);
+    end
+catch ME
+    disp("仿真运行时出错：" + ME.message);
+    % 将simIns对象保存到工作区，方便调试
+    assignin('base', 'evaEcoSimIn', simIns);
+    return
 end
 
 %% 处理仿真结果数据
@@ -29,15 +35,22 @@ socData = cell(1, taskCount);
 timestamps = cell(1, taskCount);
 velocityData = cell(1, taskCount);
 
-for idx = 1:taskCount
-    socTimeTable = get(simOut(idx).logsout, "<BattSoc>").Values;
-    socData{idx} = socTimeTable.Data;
-    timestamps{idx} = socTimeTable.Time;
-    velocityData{idx} = get(simOut(idx).logsout, "VehicleVelocity").Values.Data;
+try
+    for idx = 1:taskCount
+        socTimeTable = get(simOut(idx).logsout, "<BattSoc>").Values;
+        socData{idx} = socTimeTable.Data;
+        timestamps{idx} = socTimeTable.Time;
+        velocityData{idx} = get(simOut(idx).logsout, "VehicleVelocity").Values.Data;
 
-    % 计算经济性得分
-    % TODO 经济性得分计算方法待优化
-    economyScores(idx) = socTimeTable.Data(1) - socTimeTable.Data(end);
+        % 计算经济性得分
+        % 目前直接使用电池SOC消耗作为得分，可以考虑进一步优化
+        economyScores(idx) = socTimeTable.Data(1) - socTimeTable.Data(end);
+    end
+catch ME
+    disp("处理仿真结果数据时出错：" + ME.message);
+    % 将simOut对象保存到工作区，方便调试
+    assignin('base', 'evaEcoSimOut', simOut);
+    return
 end
 
 %% 绘图
@@ -56,6 +69,7 @@ if doPlot
     hold off
 
     % 电机工作点图
+    % TODO 实现绘制电机工作点图功能
 
 end
 
