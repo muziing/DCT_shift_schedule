@@ -3,12 +3,12 @@ classdef Particle
 %   通过此类的实例管理粒子的位置、速度、历史最优位置等信息
 
 properties
+    x % 粒子位置
     pbest % 粒子历史最优位置
     fitness_value_best % 粒子历史最优适应值
 end
 
 properties (SetAccess = private)
-    x % 粒子位置
     x_min % 粒子位置边界
     x_max % 粒子位置边界
     fitness_value (1, 1) {mustBeNumeric} % 当前位置对应适应值
@@ -34,13 +34,14 @@ methods
 
         obj.x = initX;
         obj.pbest = obj.x;
-        obj.x_min
+        obj.x_min;
         obj.v = initV;
         obj.x_min = xMin;
         obj.x_max = xMax;
         obj.v_max = vMax;
         obj.c1 = c1;
         obj.c2 = c2;
+        obj.moved = false;
     end
 
     function obj = update_v(obj, omega, gbest, vlim_func)
