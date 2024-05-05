@@ -14,13 +14,15 @@ if shiftScheduleMin > shiftScheduleMax
     error("shiftScheduleMin 必须严格小于 shiftScheduleMax")
 end
 
-% 遍历换挡规律中 upSpds 中的所有维度，对每个维度在给定范围内生成随机数
+% 遍历换挡规律 upSpds 中的所有速度，在给定范围内生成随机数
 upSpds = zeros(size(shiftScheduleMin.UpSpds));
 for apIdx = 1:width(shiftScheduleMin.UpSpds)
     % 最终值 = 最小值 + 0~1随机数 * (最大值 - 最小值)
-    upSpds(:, apIdx) = shiftScheduleMin.UpSpds(:, apIdx) + ...
-        rand * (shiftScheduleMax.UpSpds(:, apIdx) - ...
-        shiftScheduleMin.UpSpds(:, apIdx));
+    for gearIdx = 1:height(shiftScheduleMin.UpSpds)
+        upSpds(gearIdx, apIdx) = shiftScheduleMin.UpSpds(gearIdx, apIdx) + ...
+            rand * (shiftScheduleMax.UpSpds(gearIdx, apIdx) - ...
+            shiftScheduleMin.UpSpds(gearIdx, apIdx));
+    end
 end
 % 降挡点由 get_downshift_spds() 函数默认配置计算而来，不再随机生成
 downSpds = get_downshift_spds(upSpds);
