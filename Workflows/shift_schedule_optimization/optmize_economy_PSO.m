@@ -3,40 +3,59 @@
 
 %% 配置
 
-particleCount = 10; % 粒子群规模（粒子数）
-loopCount = 80; % 最大迭代次数
+% 粒子群配置
+particleCount = 48; % 粒子群规模（粒子数）
+loopCount = 15; % 最大迭代次数
 omegaMin = 1.2; % 最小惯性权重ω
 omegaMax = 1.8; % 最大惯性权重ω
 c1 = 1.6; % 个体学习因子
 c2 = 1.8; % 群体学习因子
+epsilon = 1e-6; % 收敛阈值（两次更新全局最优解之差小于此阈值则停止迭代完成优化）
+
+% 检查配置参数合理性
+if particleCount <= 0 || loopCount <= 0 || omegaMin <= 0 || omegaMax <= 0 ...
+        || c1 <= 0 || c2 <= 0 || epsilon < 0
+    error('配置参数不合法');
+end
+
+% 初始化换挡规律配置
+% 目前仅为验证PSO算法可行性而临时拼凑的上下界，应使用参数扫描的结果确定更优上下界
+load("ShiftSchedules.mat")
+shiftScheduleMin = shiftSchedule_test_min; 
+shiftScheduleMax = shiftSchedule_test_max;
 
 %% 初始化粒子群
+
+fprintf("%s 启动 PSO 优化，粒子数【%d】，最大迭代数【%d】\n", ...
+    string(datetime), particleCount, loopCount)
 
 particleArray = Particle.empty(particleCount, 0);
 
 % 初始化粒子位置、速度、位置边界、速度边界
 for pIdx = 1:particleCount
-    % TODO 设计良好的位置、速度随机初始化方法
-    initX = ShiftSchedule();
-    initV = ShiftSchedule();
-    vMax = ShiftSchedule();
-    xMin = ShiftSchedule();
-    xMax = ShiftSchedule();
+    xMin = shiftScheduleMin;
+    xMax = shiftScheduleMax;
+    vMax = (xMax - xMin) .* 0.1;
+    initX = gen_random_schedule(xMin, xMax, "优化粒子位置");
+    initV = gen_random_schedule(xMin .* 0.05, xMax .* 0.05, "优化粒子移动速度");
     particleArray(pIdx) = Particle(initX, initV, vMax, xMin, xMax, c1, c2);
 end
 
 % 初始化粒子群适应值
-[gbest, gbestX] = update_eco_scores(particleArray);
+[particleArray, gBestScore, gbest] = update_eco_scores(particleArray);
+fprintf("%s 初始条件，全局最优得分 【%.4f】\n", string(datetime), gBestScore)
 
 % 更新粒子位置
 for pIdx = 1:particleCount
-    particleArray(pIdx) = particleArray(pIdx).update_x(@ShiftSchedule.limit);
+    particleArray(pIdx) = particleArray(pIdx).update_x(...
+        @ShiftSchedule.limit_strict);
 end
 
 %% 迭代
 
-for loopIdx = 1:loopCount
+converged = false; % 收敛标志
 
+for loopIdx = 1:loopCount
     % 更新惯性权重
     omega = update_omega(loopIdx, loopCount, omegaMin, omegaMax);
 
@@ -48,30 +67,49 @@ for loopIdx = 1:loopCount
 
     % 更新粒子位置
     for pIdx = 1:particleCount
-        particleArray(pIdx) = particleArray(pIdx).update_x(@ShiftSchedule.limit);
+        particleArray(pIdx) = particleArray(pIdx).update_x(...
+            @ShiftSchedule.limit_strict);
     end
 
     % 更新粒子群适应值
-    [gbest, gbestX] = update_eco_scores(particleArray);
+    [particleArray, currBestScore, currGBest] = update_eco_scores(particleArray);
+    if currBestScore < gBestScore
+        % 如果当前迭代次中获得的全局最优解优于历史全局最优解，则更新
+        if (gBestScore - currBestScore) < epsilon
+            converged = true;
+        end
+        gbest = currGBest;
+        gBestScore = currBestScore;
+    end
+       
+    % plot_shift_lines(gbest) % 调试用
 
     % 输出提示信息，便于监控程序运行情况
-    disp("第 "+num2str(loopIdx) + " 次迭代，全局最优解 gbest = "+num2str(gbest))
+    fprintf("%s 第【%d】次迭代，本轮最优得分【%.5f】，全局最优得分【%.4f】\n", ...
+        string(datetime), loopIdx, currBestScore, gBestScore)
 
-    % TODO 设计中断迭代条件
+    % 由是否收敛判断是否继续迭代
+    if converged
+        disp("已收敛，迭代结束")
+        break
+    end
 end
 
 %% 输出
 
-shiftSchedule_eco_pso = gbestX;
-save(Data \ pso_result.mat, 'shiftSchedule_eco_pso')
+shiftSchedule_eco_pso = gbest;
+shiftSchedule_eco_pso.Description = "经济型换挡规律（PSO优化）";
+plot_shift_lines(shiftSchedule_eco_pso);
+% TODO 优化文件相对路径处理
+save("../Data/ShiftSchedules.mat", "shiftSchedule_eco_pso", '-append')
 
 %% 辅助函数
 
-function [bestEcoScore, bestX] = update_eco_scores(particleArray)
+function [particleArray, bestEcoScore, bestX] = update_eco_scores(particleArray)
 %UPDATE_ECO_SCORES 批量计算并更新所有粒子的经济性得分（适应值）
 %   返回全局最优适应值与全局最优解
 arguments
-    particleArray (1, :) Particle
+    particleArray (1, :) Particle % 粒子群（一维Particle数组）
 end
 
 particleCount = length(particleArray);
@@ -85,20 +123,19 @@ try
     % evaluate_economy() 内部应实现并行，以显著提高速度
     ecoScores = evaluate_economy(shiftSchedules, true, false);
 catch ME
-    disp(['Error when evaluating economy: ' ME.message]);
+    disp("执行 evaluate_economy 时出错：" + ME.message);
     return
 end
 
 % 提取最优解
 [~, bestParticleIdx] = min(ecoScores);
 bestEcoScore = ecoScores(bestParticleIdx);
-bestX = shiftSchedules(bestParticleIdx(1)).x;
+bestX = shiftSchedules(bestParticleIdx(1));
 
 % 将更新后的适应值保存到粒子中
 for pIdx = 1:particleCount
     particleArray(pIdx) = particleArray(pIdx).update_fitness(ecoScores(pIdx));
 end
-
 end
 
 function omega = update_omega(iter, iterMax, omegaMin, omegaMax)
