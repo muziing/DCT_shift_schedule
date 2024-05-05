@@ -138,6 +138,20 @@ methods
         output.DownAPs = obj.DownAPs;
         output.Description = obj.Description;
     end
+
+    function output = uminus(obj)
+        %UMINUS 运算符重载 "-"（单目运算符）
+        arguments
+            obj (1, 1) ShiftSchedule
+        end
+
+        output = ShiftSchedule;
+        output.UpSpds = -obj.UpSpds;
+        output.DownSpds = -obj.DownSpds;
+        output.UpAPs = obj.UpAPs;
+        output.DownAPs = obj.DownAPs;
+        output.Description = obj.Description;
+    end
 end
 
 methods (Static)
@@ -204,23 +218,41 @@ methods (Static)
             maxSchedule (1, 1) ShiftSchedule % 上界
         end
 
-        obj = ShiftSchedule.limit(obj, minSchedule, maxSchedule);
-
-        % 相邻换挡线间应无交点
-        for apIdx = 1:width(obj.UpSpds)
-            for shiftIdx = 1:height(obj.UpSpds)
-                if obj.UpSpds(shiftIdx, apIdx) < obj.UpSpds(shiftIdx + 1, apIdx)
-                    continue
-                else
-                    % 如果出现高挡位换挡速度小于低档位换挡速度，就强制修改高挡位换挡速度
-                    obj.UpSpds(shiftIdx + 1, apIdx) = obj.UpSpds(shiftIdx, apIdx) + 5;
-                end
-            end
-        end
+        % FIXME 在PSO算法流程中，在此调用 limit() 无效，暂且将其实现复制一份
+        obj.UpSpds(obj.UpSpds < minSchedule.UpSpds) = ...
+            minSchedule.UpSpds(obj.UpSpds < minSchedule.UpSpds);
+        obj.DownSpds(obj.DownSpds < minSchedule.DownSpds) = ...
+            minSchedule.DownSpds(obj.DownSpds < minSchedule.DownSpds);
+        obj.UpSpds(obj.UpSpds > maxSchedule.UpSpds) = ...
+            maxSchedule.UpSpds(obj.UpSpds > maxSchedule.UpSpds);
+        obj.DownSpds(obj.DownSpds > maxSchedule.DownSpds) = ...
+            maxSchedule.DownSpds(obj.DownSpds > maxSchedule.DownSpds);
 
         % 降挡速度应小于对应升挡速度，且差值（换挡延迟）不小于 3km/h
         obj.DownSpds(obj.DownSpds + 3 > obj.UpSpds) = ...
             obj.UpSpds(obj.DownSpds + 3 > obj.UpSpds) - 3;
+
+        % 相邻换挡线间应无交点
+        for apIdx = 1:width(obj.UpSpds)
+            for shiftIdx = 1:height(obj.UpSpds) - 1
+                if obj.UpSpds(shiftIdx, apIdx) + 4 < obj.DownSpds(...
+                        shiftIdx + 1, apIdx)
+                    continue
+                else
+                    % 如果出现高挡位换挡速度小于低档位换挡速度，就强制修改高挡位换挡速度
+                    obj.DownSpds(shiftIdx + 1, apIdx) = ...
+                        obj.UpSpds(shiftIdx, apIdx) + 4;
+                    if obj.UpSpds(shiftIdx + 1, apIdx) < ...
+                            obj.DownSpds(shiftIdx + 1, apIdx) + 3
+                        % 若增大高挡位降挡车速后使 降挡车速+换挡延迟>升挡车速，
+                        % 则一并增加升挡车速
+                        obj.UpSpds(shiftIdx + 1, apIdx) = ...
+                            obj.DownSpds(shiftIdx + 1, apIdx) + 3;
+                    end
+                end
+            end
+        end
+
     end
 end
 
