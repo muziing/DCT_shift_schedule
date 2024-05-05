@@ -1,8 +1,10 @@
 classdef ShiftSchedule
 %SHIFTSCHEDULE 换挡规律数据类
 %   用于结构化存储换挡规律数据的类
-%   https://ww2.mathworks.cn/help/matlab/matlab_oop/example-representing-structured-data.html
 %   通过运算符重载，实现了可相互加减功能，便于优化算法处理
+
+%   关于使用类存储处理结构化数据，参考：
+%   https://ww2.mathworks.cn/help/matlab/matlab_oop/example-representing-structured-data.html
 
 properties
     UpSpds {mustBeNumeric} % 升档速度值二维数组
@@ -138,7 +140,7 @@ methods
     end
 end
 
-methods (Access = private, Static)
+methods (Static)
     function check_other(obj, other)
         %CHECK_OTHER 运算符重载检查函数
         %   对于 "+" "<" 等运算，只有两个换挡规律有相同的加速踏板开度列表和换挡
@@ -157,11 +159,11 @@ methods (Access = private, Static)
             error("UpSpds 或 DownSpds 数组大小不一致，无法处理")
         end
     end
-end
 
-methods (Static)
     function obj = limit(obj, minSchedule, maxSchedule)
         %LIMIT 限制 ShiftSchedule 中各换挡点速度介于最大最小值之间
+        %   注意此函数限制较为宽松，仅适用于 PSO 算法中粒子速度的边界限制
+        %   对于严格的换挡规律限制，应使用 ShiftSchedule.limit_strict()
         arguments
             obj (1, 1) ShiftSchedule % 待限制的换挡规律
             minSchedule (1, 1) ShiftSchedule % 下界
@@ -189,6 +191,36 @@ methods (Static)
             maxSchedule.UpSpds(obj.UpSpds > maxSchedule.UpSpds);
         obj.DownSpds(obj.DownSpds > maxSchedule.DownSpds) = ...
             maxSchedule.DownSpds(obj.DownSpds > maxSchedule.DownSpds);
+    end
+
+    function obj = limit_strict(obj, minSchedule, maxSchedule)
+        %LIMIT_STRICT 限制 ShiftSchedule 中各换挡点速度介于最大最小值之间，且满足严格限制
+        %   相邻换挡线间无交点、同一挡位的降挡速度小于升挡速度且有适当换挡延迟
+        %   对于优化算法中的粒子速度限制，应使用 ShiftSchedule.limit()
+        %   对于优化算法中的粒子位置限制，应使用 ShiftSchedule.limit_strict()
+        arguments
+            obj (1, 1) ShiftSchedule % 待限制的换挡规律
+            minSchedule (1, 1) ShiftSchedule % 下界
+            maxSchedule (1, 1) ShiftSchedule % 上界
+        end
+
+        obj = ShiftSchedule.limit(obj, minSchedule, maxSchedule);
+
+        % 相邻换挡线间应无交点
+        for apIdx = 1:width(obj.UpSpds)
+            for shiftIdx = 1:height(obj.UpSpds)
+                if obj.UpSpds(shiftIdx, apIdx) < obj.UpSpds(shiftIdx + 1, apIdx)
+                    continue
+                else
+                    % 如果出现高挡位换挡速度小于低档位换挡速度，就强制修改高挡位换挡速度
+                    obj.UpSpds(shiftIdx + 1, apIdx) = obj.UpSpds(shiftIdx, apIdx) + 5;
+                end
+            end
+        end
+
+        % 降挡速度应小于对应升挡速度，且差值（换挡延迟）不小于 3km/h
+        obj.DownSpds(obj.DownSpds + 3 > obj.UpSpds) = ...
+            obj.UpSpds(obj.DownSpds + 3 > obj.UpSpds) - 3;
     end
 end
 

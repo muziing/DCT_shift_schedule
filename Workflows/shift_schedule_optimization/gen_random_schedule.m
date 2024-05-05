@@ -34,6 +34,6 @@ randomSchedule.UpSpds = upSpds;
 randomSchedule.DownSpds = downSpds;
 
 % 边界检查
-randomSchedule = ShiftSchedule.limit(randomSchedule, ...
+randomSchedule = ShiftSchedule.limit_strict(randomSchedule, ...
     shiftScheduleMin, shiftScheduleMax);
 end
