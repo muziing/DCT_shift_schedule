@@ -9,31 +9,31 @@ arguments
 end
 
 % 输入检查
-shiftScheduleMin.check_other(shiftScheduleMin, shiftScheduleMax)
+ShiftSchedule.check_other(shiftScheduleMin, shiftScheduleMax)
 if shiftScheduleMin > shiftScheduleMax
-    error("shiftScheduleMin 必须小于 shiftScheduleMax")
+    error("shiftScheduleMin 必须严格小于 shiftScheduleMax")
 end
 
 % 遍历换挡规律中 upSpds 中的所有维度，对每个维度在给定范围内生成随机数
-upSpds = zeros(shiftScheduleMin.UpSpds.size);
-for apIdx = 1:width(shiftScheduleMin.upSpds)
+upSpds = zeros(size(shiftScheduleMin.UpSpds));
+for apIdx = 1:width(shiftScheduleMin.UpSpds)
     % 最终值 = 最小值 + 0~1随机数 * (最大值 - 最小值)
-    upSpds(:, apIdx) = shiftScheduleMin.upSpds(:, apIdx) + ...
-        random * (shiftScheduleMax.upSpds(:, apIdx) - ...
-        shiftScheduleMin.upSpds(:, apIdx));
+    upSpds(:, apIdx) = shiftScheduleMin.UpSpds(:, apIdx) + ...
+        rand * (shiftScheduleMax.UpSpds(:, apIdx) - ...
+        shiftScheduleMin.UpSpds(:, apIdx));
 end
 % 降挡点由 get_downshift_spds() 函数默认配置计算而来，不再随机生成
 downSpds = get_downshift_spds(upSpds);
 
 % 创建随机换挡规律实例
 randomSchedule = ShiftSchedule;
-randomSchedule.upAps = shiftScheduleMin.upAps;
-randomSchedule.downAps = shiftScheduleMin.downAps;
+randomSchedule.UpAPs = shiftScheduleMin.UpAPs;
+randomSchedule.DownAPs = shiftScheduleMin.DownAPs;
 randomSchedule.Description = description;
 randomSchedule.UpSpds = upSpds;
 randomSchedule.DownSpds = downSpds;
 
 % 边界检查
-randomSchedule = randomSchedule.limit(shiftScheduleMin, shiftScheduleMax);
-
+randomSchedule = ShiftSchedule.limit(randomSchedule, ...
+    shiftScheduleMin, shiftScheduleMax);
 end
