@@ -19,7 +19,7 @@ try
         simOut = sim(simIns);
     else
         % 并行仿真
-        simOut = parsim(simIns);
+        simOut = parsim(simIns, 'ShowProgress', 'off');
     end
 catch ME
     disp("仿真运行时出错：" + ME.message);
@@ -60,7 +60,7 @@ if doPlot
     hold on
     for idx = 1:taskCount
         plot(timestamps{idx}, socData{idx}, 'DisplayName', ...
-            "换挡规律"+num2str(idx))
+            shiftSchedules(idx).Description)
     end
     grid on
     title("电池 SOC 曲线")

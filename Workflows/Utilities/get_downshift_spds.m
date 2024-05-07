@@ -1,5 +1,4 @@
-function downShiftSpds = get_downshift_spds(upShiftSpds, delaySpeed, ...
-    delaySpeedFactor)
+function downShiftSpds = get_downshift_spds(upShiftSpds, delaySpeed, delaySpeedFactor)
 %GET_DOWNSHIFT_SPDS 由升挡点数组计算降挡点数组
 %   upShiftSpds: 升挡点数组，各行代表不同的踏板开度、各列代表不同的挡位
 %   delaySpeed: 换挡延迟，(km/h)，一般取 2~8

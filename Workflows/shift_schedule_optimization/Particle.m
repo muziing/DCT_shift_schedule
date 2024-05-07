@@ -65,10 +65,7 @@ methods
             obj.c2 * rand .* (gbest - obj.x);
 
         % 限制速度
-        next_v = vlim_func(next_v, -obj.v_max, obj.v_max);
-        % 速度的限制和位置的限制函数非常相似，考虑如何优化
-
-        obj.v = next_v;
+        obj.v = vlim_func(next_v, -obj.v_max, obj.v_max);
         obj.moved = false; % 标记“速度已更新，位置对应尚未移动”
     end
 

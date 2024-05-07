@@ -29,7 +29,7 @@ simMode = "accelerator";
 accelThreshold = 0.05;
 
 % 根据经验，仿真开始的一小段时间内求解尚未完全稳定，容易出现值突变，舍去（待优化）
-startIndex = 2501;
+startIndex = 1001;
 
 %% 创建、配置并运行仿真任务
 
@@ -86,17 +86,19 @@ for apIndex = 1:length(accelPedalValues)
         
         % 因差分会显著放大噪声，使用移动平均值对速度简单滤波
         smoothedVelocities = smooth(velocityTimeTable.Data, 'moving', 20);
+        
         % 差分得到加速度
         accelerations = diff(smoothedVelocities) ./ diff(seconds(timestamps));
         jerks = diff(accelerations) ./ diff(seconds(timestamps(1:end-1)));
 
         % 获取电机转速转矩，查效率MAP图获取对应工作点效率
-        % motorSpds = get(simOut(index).logsout, "MotorSpeed").Values.Data;
-        % motorTrqs = get(simOut(index).logsout, "MotTrq").Values.Data;
-        % motorEffs = interp2(MotorData.Efficiency.Drive.Speed, ...
-        %     MotorData.Efficiency.Drive.Torque, ...
-        %     MotorData.Efficiency.Drive.Eff, ...
-        %     motorSpds, motorTrqs); % 通过插值获取电机效率值
+        motorSpds_rads = get(simOut(index).logsout, "MotSpd").Values.Data;
+        motorSpds = motorSpds_rads * (60/(2*pi));  % rad/s -> rpm
+        motorTrqs = get(simOut(index).logsout, "MotTrq").Values.Data;
+        motorEffs = interp2(MotorData.Efficiency.Drive.Speed, ...
+            MotorData.Efficiency.Drive.Torque, ...
+            MotorData.Efficiency.Drive.Eff, ...
+            motorSpds, motorTrqs); % 通过插值获取电机效率值
 
         % TODO 将起始时间处理为驾驶员踩满加速踏板后的时刻
 
@@ -111,22 +113,23 @@ for apIndex = 1:length(accelPedalValues)
         smoothedVelocities = smoothedVelocities(startIndex:endIndex);
         accelerations = accelerations(startIndex:endIndex);
         jerks = jerks(startIndex:endIndex);
-        % motorEffs = motorEffs(startIndex:endIndex);
+        motorEffs = motorEffs(startIndex:endIndex);
         
         % plot(timestamps, smoothedVelocities) % 【车速-时间】曲线，调试用
-        % plot(timestamps, accelerations) % 【加速度-时间】曲线，调试用
+        plot(timestamps, accelerations) % 【加速度-时间】曲线，调试用
         plot(timestamps, jerks)
+        % plot(timestamps, motorEffs)
         
         % 将处理后的数据重新整理至一张 timetable 中
-        dataTable = timetable(smoothedVelocities, accelerations, ...
+        dataTable = timetable(smoothedVelocities, accelerations, motorEffs, ...
             'RowTimes', timestamps);
 
         % 通过一维插值，计算【加速度-车速】、【电机效率-车速】曲线
         equispacedVelocities = 0:0.001:max(smoothedVelocities);
         accel2velocitie = interp1(smoothedVelocities, accelerations, ...
-            equispacedVelocities); % TODO 解决可能存在相同车速的导致采样点不唯一的问题
-        % eff2velocitie = interp1(smoothedVelocities, motorEffs, ....
-        %     equispacedVelocities);
+            equispacedVelocities); % FIXME 解决可能存在相同车速的导致采样点不唯一的问题
+        eff2velocitie = interp1(smoothedVelocities, motorEffs, ....
+            equispacedVelocities);
 
         % 将处理后的结果数据保存到结构体数组中
         result{index}.AccelPedal = accelPedalValues(apIndex);
@@ -134,16 +137,17 @@ for apIndex = 1:length(accelPedalValues)
         result{index}.PostedData = dataTable;
         result{index}.EquispacedVelocities = equispacedVelocities;
         result{index}.Accel2Velocities = accel2velocitie;
-        % result{index}.Eff2Velocities = eff2velocitie;
+        result{index}.Eff2Velocities = eff2velocitie;
 
         index = index + 1;
     end
 end
 
-clear index apIndex velocityTimeTable
-% clear timestamps smoothedVelocities accelerations endIndex
-clear equispacedVelocities accel2velocitie
-% clear motorSpds motorTrqs motorEffs
+clear index apIndex gear velocityTimeTable
+clear timestamps  startIndex endIndex
+clear smoothedVelocities accelerations jerks
+clear equispacedVelocities accel2velocitie eff2velocitie
+clear motorSpds_rads motorSpds motorTrqs motorEffs
 
 % 保存仿真结果，以备日后检查排错
 % save("calibrate_result.mat", "simIn", "simOut", "result")
@@ -173,7 +177,12 @@ for apIndex = 1:length(accelPedalValues)
     index = index + length(gearNumbers);
 end
 
+clear index
 
 %% 导出标定结果
 
 modelVersion = simOut(1).SimulationMetadata.ModelInfo.ModelVersion;
+
+%% 收尾清理
+
+clear modelName modelVersion gearNumbers simTaskCount result

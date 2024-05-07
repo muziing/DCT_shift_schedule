@@ -4,13 +4,13 @@
 %% 配置
 
 % 粒子群配置
-particleCount = 48; % 粒子群规模（粒子数）
-loopCount = 15; % 最大迭代次数
-omegaMin = 1.2; % 最小惯性权重ω
+particleCount = 50; % 粒子群规模（粒子数）
+loopCount = 50; % 最大迭代次数
+omegaMin = 0.9; % 最小惯性权重ω
 omegaMax = 1.8; % 最大惯性权重ω
 c1 = 1.6; % 个体学习因子
 c2 = 1.8; % 群体学习因子
-epsilon = 1e-6; % 收敛阈值（两次更新全局最优解之差小于此阈值则停止迭代完成优化）
+epsilon = 1e-5; % 收敛阈值（两次更新全局最优解之差小于此阈值则停止迭代完成优化）
 
 % 检查配置参数合理性
 if particleCount <= 0 || loopCount <= 0 || omegaMin <= 0 || omegaMax <= 0 ...
@@ -21,12 +21,12 @@ end
 % 初始化换挡规律配置
 % 目前仅为验证PSO算法可行性而临时拼凑的上下界，应使用参数扫描的结果确定更优上下界
 load("ShiftSchedules.mat")
-shiftScheduleMin = shiftSchedule_test_min; 
+shiftScheduleMin = shiftSchedule_test_min;
 shiftScheduleMax = shiftSchedule_test_max;
 
 %% 初始化粒子群
 
-fprintf("%s 启动 PSO 优化，粒子数【%d】，最大迭代数【%d】\n", ...
+fprintf("[%s] 启动 PSO 优化，粒子数[%d]，最大迭代数[%d]\n", ...
     string(datetime), particleCount, loopCount)
 
 particleArray = Particle.empty(particleCount, 0);
@@ -43,11 +43,11 @@ end
 
 % 初始化粒子群适应值
 [particleArray, gBestScore, gbest] = update_eco_scores(particleArray);
-fprintf("%s 初始条件，全局最优得分 【%.4f】\n", string(datetime), gBestScore)
+fprintf("[%s] 初始条件，全局最优解 [%.6f]\n", string(datetime), gBestScore)
 
 % 更新粒子位置
 for pIdx = 1:particleCount
-    particleArray(pIdx) = particleArray(pIdx).update_x(...
+    particleArray(pIdx) = particleArray(pIdx).update_x( ...
         @ShiftSchedule.limit_strict);
 end
 
@@ -67,7 +67,7 @@ for loopIdx = 1:loopCount
 
     % 更新粒子位置
     for pIdx = 1:particleCount
-        particleArray(pIdx) = particleArray(pIdx).update_x(...
+        particleArray(pIdx) = particleArray(pIdx).update_x( ...
             @ShiftSchedule.limit_strict);
     end
 
@@ -81,11 +81,11 @@ for loopIdx = 1:loopCount
         gbest = currGBest;
         gBestScore = currBestScore;
     end
-       
+
     % plot_shift_lines(gbest) % 调试用
 
     % 输出提示信息，便于监控程序运行情况
-    fprintf("%s 第【%d】次迭代，本轮最优得分【%.5f】，全局最优得分【%.4f】\n", ...
+    fprintf("[%s] 第[%3d]次迭代，本次最优解 [%.6f]，全局最优解 [%.4f]\n", ...
         string(datetime), loopIdx, currBestScore, gBestScore)
 
     % 由是否收敛判断是否继续迭代
@@ -95,13 +95,20 @@ for loopIdx = 1:loopCount
     end
 end
 
-%% 输出
+%% 导出结果
+
+fprintf("[%s] 优化结束，全局最优解 [%.4f]\n", string(datetime), gBestScore)
 
 shiftSchedule_eco_pso = gbest;
 shiftSchedule_eco_pso.Description = "经济型换挡规律（PSO优化）";
 plot_shift_lines(shiftSchedule_eco_pso);
 % TODO 优化文件相对路径处理
 save("../Data/ShiftSchedules.mat", "shiftSchedule_eco_pso", '-append')
+
+%% 收尾清理
+
+clear initX initV pIdx loopIdx economyScores currBestScore currGBest
+clear vMax xMax xMin particleArray omega
 
 %% 辅助函数
 
