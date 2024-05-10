@@ -31,6 +31,8 @@ grid on
 title(shiftSchedule.Description)
 xlabel("车速 / (km/h)")
 ylabel("加速踏板开度 / (%)")
+xlim([0, 120])
+xticks(0:10:120)
 legend('Location', 'best')
 hold off
 

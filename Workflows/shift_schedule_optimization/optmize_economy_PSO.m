@@ -4,13 +4,13 @@
 %% 配置
 
 % 粒子群配置
-particleCount = 50; % 粒子群规模（粒子数）
-loopCount = 50; % 最大迭代次数
-omegaMin = 0.9; % 最小惯性权重ω
-omegaMax = 1.8; % 最大惯性权重ω
+particleCount = 56; % 粒子群规模（粒子数）
+loopCount = 30; % 最大迭代次数
+omegaMin = 0.2; % 最小惯性权重ω
+omegaMax = 1.2; % 最大惯性权重ω
 c1 = 1.6; % 个体学习因子
-c2 = 1.8; % 群体学习因子
-epsilon = 1e-5; % 收敛阈值（两次更新全局最优解之差小于此阈值则停止迭代完成优化）
+c2 = 2; % 群体学习因子
+epsilon = 1e-6; % 收敛阈值（两次更新全局最优解之差小于此阈值则停止迭代完成优化）
 
 % 检查配置参数合理性
 if particleCount <= 0 || loopCount <= 0 || omegaMin <= 0 || omegaMax <= 0 ...
@@ -20,7 +20,7 @@ end
 
 % 初始化换挡规律配置
 % 目前仅为验证PSO算法可行性而临时拼凑的上下界，应使用参数扫描的结果确定更优上下界
-load("ShiftSchedules.mat")
+load("ShiftSchedulesData.mat")
 shiftScheduleMin = shiftSchedule_test_min;
 shiftScheduleMax = shiftSchedule_test_max;
 
@@ -43,6 +43,7 @@ end
 
 % 初始化粒子群适应值
 [particleArray, gBestScore, gbest] = update_eco_scores(particleArray);
+lastBestScore = gBestScore;
 fprintf("[%s] 初始条件，全局最优解 [%.6f]\n", string(datetime), gBestScore)
 
 % 更新粒子位置
@@ -73,11 +74,14 @@ for loopIdx = 1:loopCount
 
     % 更新粒子群适应值
     [particleArray, currBestScore, currGBest] = update_eco_scores(particleArray);
+
+    if abs(lastBestScore - currBestScore) < epsilon
+        % 判断是否收敛
+        converged = true;
+    end
+
     if currBestScore < gBestScore
         % 如果当前迭代次中获得的全局最优解优于历史全局最优解，则更新
-        if (gBestScore - currBestScore) < epsilon
-            converged = true;
-        end
         gbest = currGBest;
         gBestScore = currBestScore;
     end
@@ -85,7 +89,7 @@ for loopIdx = 1:loopCount
     % plot_shift_lines(gbest) % 调试用
 
     % 输出提示信息，便于监控程序运行情况
-    fprintf("[%s] 第[%3d]次迭代，本次最优解 [%.6f]，全局最优解 [%.4f]\n", ...
+    fprintf("[%s] 第[%2d]次迭代，本次最优解 [%.6f]，全局最优解 [%.4f]\n", ...
         string(datetime), loopIdx, currBestScore, gBestScore)
 
     % 由是否收敛判断是否继续迭代
@@ -93,22 +97,26 @@ for loopIdx = 1:loopCount
         disp("已收敛，迭代结束")
         break
     end
+    
+    % 将当前轮最优值记录，便于与下一轮最优值比较
+    lastBestScore = currBestScore;
 end
-
-%% 导出结果
 
 fprintf("[%s] 优化结束，全局最优解 [%.4f]\n", string(datetime), gBestScore)
 
-shiftSchedule_eco_pso = gbest;
-shiftSchedule_eco_pso.Description = "经济型换挡规律（PSO优化）";
-plot_shift_lines(shiftSchedule_eco_pso);
+%% 导出结果
+
+shiftSchedule_eco_pso_6 = gbest;
+shiftSchedule_eco_pso_6.Description = "经济型换挡规律（PSO优化）";
+plot_shift_lines(shiftSchedule_eco_pso_6);
 % TODO 优化文件相对路径处理
-save("../Data/ShiftSchedules.mat", "shiftSchedule_eco_pso", '-append')
+save("../Data/ShiftSchedulesData.mat", "shiftSchedule_eco_pso_6", '-append')
 
 %% 收尾清理
 
+clear shiftScheduleMax shiftScheduleMin
 clear initX initV pIdx loopIdx economyScores currBestScore currGBest
-clear vMax xMax xMin particleArray omega
+clear vMax xMax xMin particleArray omega lastBestScore
 
 %% 辅助函数
 
