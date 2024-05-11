@@ -11,8 +11,8 @@ arguments
 end
 
 % 初始化
-modelName = "Dual_Clutch_Trans";
-shiftBlock = "Dual_Clutch_Trans/TCU/TCU/Shift Logic";
+modelName = "BEV_4DCT_Longitudinal";
+shiftBlock = "BEV_4DCT_Longitudinal/TCU/TCU/Shift Logic";
 load_system(modelName);
 
 taskCount = length(shiftSchedule); % 换挡参数数量（仿真任务数）
@@ -40,7 +40,7 @@ for idx = 1:taskCount
     simIn(idx) = simIn(idx).setVariable('downShiftLookupTable', downShiftLookupTable, ...
         'Workspace', modelName);
 
-    % 通过修改模型引用的实例属性，使引用实例使用Dual_Clutch_Trans模型工作区中的查表
+    % 通过修改模型引用的实例属性，使引用实例使用父模型工作区中的LookupTable
     instSpecParams = get_param(shiftBlock, 'InstanceParameters');
     instSpecParams(1).Value = 'downShiftLookupTable';
     instSpecParams(2).Value = 'upShiftLookupTable';

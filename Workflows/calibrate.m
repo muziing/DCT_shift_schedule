@@ -18,7 +18,7 @@ gearNumbers = 1:4; % 挡位数
 delaySpeed = 5; % 换挡延迟，(km/h)
 delaySpeedFactor = 1; % 换挡延迟系数
 
-modelName = "Dual_Clutch_Trans"; % Simulink 模型文件名（不含扩展名）
+modelName = "BEV_4DCT_Longitudinal"; % Simulink 模型文件名（不含扩展名）
 DrivingCycle = "AccelTest"; % 选择驾驶循环
 simStopTime = "400"; % 仿真停止时间，足以让车速达到稳定即可
 
