@@ -10,12 +10,14 @@ omegaMin = 0.2; % 最小惯性权重ω
 omegaMax = 1.2; % 最大惯性权重ω
 c1 = 1.6; % 个体学习因子
 c2 = 2; % 群体学习因子
-epsilon = 1e-6; % 收敛阈值（两次更新全局最优解之差小于此阈值则停止迭代完成优化）
+epsilon = 1e-6; % 收敛阈值（连续两轮全局最优解之差小于此阈值则停止迭代完成优化）
 
 % 检查配置参数合理性
-if particleCount <= 0 || loopCount <= 0 || omegaMin <= 0 || omegaMax <= 0 ...
-        || c1 <= 0 || c2 <= 0 || epsilon < 0
-    error('配置参数不合法');
+if particleCount <= 0 || particleCount > 500 || ...
+        loopCount <= 0 || loopCount > 150 || ...
+        omegaMin <= 0 || omegaMax <= 0 || omegaMin > omegaMax || ...
+        c1 <= 0 || c2 <= 0 || epsilon < 0
+    error("配置参数不合理，请检查");
 end
 
 % 初始化换挡规律配置
@@ -35,9 +37,9 @@ particleArray = Particle.empty(particleCount, 0);
 for pIdx = 1:particleCount
     xMin = shiftScheduleMin;
     xMax = shiftScheduleMax;
-    vMax = (xMax - xMin) .* 0.1;
+    vMax = (xMax - xMin) .* 0.15;
     initX = gen_random_schedule(xMin, xMax, "优化粒子位置");
-    initV = gen_random_schedule(xMin .* 0.05, xMax .* 0.05, "优化粒子移动速度");
+    initV = gen_random_schedule(xMax .* -0.05, xMax .* 0.05, "优化粒子移动速度");
     particleArray(pIdx) = Particle(initX, initV, vMax, xMin, xMax, c1, c2);
 end
 
@@ -73,7 +75,13 @@ for loopIdx = 1:loopCount
     end
 
     % 更新粒子群适应值
-    [particleArray, currBestScore, currGBest] = update_eco_scores(particleArray);
+    try
+        [particleArray, currBestScore, currGBest] = ...
+            update_eco_scores(particleArray);
+    catch ME
+        disp("优化迭代运行时发生问题，已提前终止迭代，请检查")
+        break
+    end
 
     if abs(lastBestScore - currBestScore) < epsilon
         % 判断是否收敛
@@ -97,7 +105,7 @@ for loopIdx = 1:loopCount
         disp("已收敛，迭代结束")
         break
     end
-    
+
     % 将当前轮最优值记录，便于与下一轮最优值比较
     lastBestScore = currBestScore;
 end
@@ -106,11 +114,12 @@ fprintf("[%s] 优化结束，全局最优解 [%.4f]\n", string(datetime), gBestS
 
 %% 导出结果
 
-shiftSchedule_eco_pso_6 = gbest;
-shiftSchedule_eco_pso_6.Description = "经济型换挡规律（PSO优化）";
-plot_shift_lines(shiftSchedule_eco_pso_6);
-% TODO 优化文件相对路径处理
-save("../Data/ShiftSchedulesData.mat", "shiftSchedule_eco_pso_6", '-append')
+shiftSchedule_eco = gbest;
+shiftSchedule_eco.Description = "经济型换挡规律（PSO优化）";
+plot_shift_lines(shiftSchedule_eco);
+
+shiftSchedules_eco_pso = [shiftSchedules_eco_pso, shiftSchedule_eco];
+save("ShiftSchedulesData.mat", "shiftSchedules_eco_pso", '-append')
 
 %% 收尾清理
 
@@ -120,7 +129,7 @@ clear vMax xMax xMin particleArray omega lastBestScore
 
 %% 辅助函数
 
-function [particleArray, bestEcoScore, bestX] = update_eco_scores(particleArray)
+function [particleArray, bestScore, bestX] = update_eco_scores(particleArray)
 %UPDATE_ECO_SCORES 批量计算并更新所有粒子的经济性得分（适应值）
 %   返回全局最优适应值与全局最优解
 arguments
@@ -139,12 +148,12 @@ try
     ecoScores = evaluate_economy(shiftSchedules, true, false);
 catch ME
     disp("执行 evaluate_economy 时出错：" + ME.message);
-    return
+    throw(ME)
 end
 
 % 提取最优解
 [~, bestParticleIdx] = min(ecoScores);
-bestEcoScore = ecoScores(bestParticleIdx);
+bestScore = ecoScores(bestParticleIdx);
 bestX = shiftSchedules(bestParticleIdx(1));
 
 % 将更新后的适应值保存到粒子中
