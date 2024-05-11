@@ -4,8 +4,8 @@
 
 %% 电池与电机子系统
 
-BatteryData.ChrgMax = -50000;  % 电池最大充电功率，(W)
-BatteryData.DischrgMax = 50000;  % 电池最大放电功率，(W)
+VehicleData.Battery.ChrgMax = -50000;  % 电池最大充电功率，(W)
+VehicleData.Battery.DischrgMax = 50000;  % 电池最大放电功率，(W)
 
 %% 传动系子系统
 
@@ -15,12 +15,12 @@ axle_b = 10;  % 扭转阻尼，(N*m*s/rad)
 bevAxle_wc = 300;  % 阻尼截止频率，(rad/s)
 
 % 开放式差速器
-OpenDifferential.TransRatio = 37/7;  % 主减速器传动比
-OpenDifferential.Efficiency = 0.98;  % 传动效率因数（常量固定值）
-OpenDifferential.CarrierInertia = 0.025;  % 输入轴转动惯量，(kg*m²)
-OpenDifferential.CarrierDamping = 1e-3;  % 输入轴阻尼，(N*m*s/rad)
-OpenDifferential.AxleInertia = 0.01;  % 输出轴转动惯量，(kg*m²)
-OpenDifferential.AxleDamping = 1e-3;  % 输出轴阻尼，(N*m*s/rad)
+VehicleData.OpenDifferential.TransRatio = 37/7;  % 主减速器传动比
+VehicleData.OpenDifferential.Efficiency = 0.98;  % 传动效率因数（常量固定值）
+VehicleData.OpenDifferential.CarrierInertia = 0.025;  % 输入轴转动惯量，(kg*m²)
+VehicleData.OpenDifferential.CarrierDamping = 1e-3;  % 输入轴阻尼，(N*m*s/rad)
+VehicleData.OpenDifferential.AxleInertia = 0.01;  % 输出轴转动惯量，(kg*m²)
+VehicleData.OpenDifferential.AxleDamping = 1e-3;  % 输出轴阻尼，(N*m*s/rad)
 
 %% 车轮车身子系统
 
@@ -63,6 +63,17 @@ VehicleData.Wheel.Bx = 10;
 VehicleData.Wheel.Ex = 0.01;
 
 % -----------------制动器------------------------
+VehicleData.Brake.Front.Ba = 0.060; % 缸径，(m)
+VehicleData.Brake.Front.Rm = 0.125; % 有效摩擦半径，(m)
+VehicleData.Brake.Front.Mu = 0.4; % 摩擦系数
+VehicleData.Brake.Front.MuStatic = 0.45; % 静摩擦系数
+VehicleData.Brake.Front.Npads = 2; % 制动片数量
+
+VehicleData.Brake.Rear.Ba = 0.048; % 缸径，(m)
+VehicleData.Brake.Rear.Rm = 0.125; % 有效摩擦半径，(m)
+VehicleData.Brake.Rear.Mu = 0.4; % 摩擦系数
+VehicleData.Brake.Rear.MuStatic = 0.45; % 静摩擦系数
+VehicleData.Brake.Rear.Npads = 2; % 制动片数量
 
 %% 环境
 
