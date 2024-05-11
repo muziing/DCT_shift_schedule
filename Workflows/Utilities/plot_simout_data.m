@@ -8,17 +8,23 @@ arguments
     descriptions (1, :) string = [] % 描述（/数组）
 end
 
+%% 参数检查
+
 simOutCount = length(simOuts);
 
 if isempty(descriptions)
-    descriptions = cell(1, simOutCount);
+    descriptions = strings(1, simOutCount);
     for idx = 1:simOutCount
-        descriptions{idx} = "仿真结果" + num2str(idx);
+        descriptions(idx) = sprintf("仿真结果%d", idx);
     end
 end
 
 if length(descriptions) ~= simOutCount
-    error("仿真结果对象数组与描述数组长度不一致，请检查")
+    warning("仿真结果对象数组与描述数组长度不一致，将使用默认文本")
+    descriptions = strings(1, simOutCount);
+    for idx = 1:simOutCount
+        descriptions(idx) = sprintf("仿真结果%d", idx);
+    end
 end
 
 %% 提取数据
@@ -41,6 +47,7 @@ for idx = 1:simOutCount
 end
 
 %% SOC 曲线
+
 figure("Name", "SOC曲线")
 hold on
 for idx = 1:simOutCount
@@ -63,7 +70,7 @@ for idx = 1:simOutCount
         "实际车速 - " + descriptions{idx})
 end
 grid on
-title("车速跟踪图")
+title("车速曲线")
 xlabel("时间 / (s)")
 ylabel("车速 / (km/h)")
 legend('Location', 'best')
@@ -79,7 +86,8 @@ hold off
 % labelLevelList = [70, 75, 80, 83, 86, 88, 90:1:93, 93:0.5:95];
 
 for idx = 1:simOutCount
-    % 求电机转速转矩的秒级数据
+    % 电机转速转矩的秒级数据
+    % TODO 待优化
     for secTime = 1:length(timestamps{idx}) / 1000 - 1
         motSpdDataSec(secTime) = motSpdData{idx}(secTime * 1000);
         motTrqDataSec(secTime) = motTrqData{idx}(secTime * 1000);
@@ -92,7 +100,7 @@ for idx = 1:simOutCount
     % [C, h] = contourf(gridX, gridY, MotorData.Efficiency.Drive.Eff, 'LevelList', levelList);
     % clabel(C, h, labelLevelList, 'LabelSpacing', 200)
     grid on
-    title("电机工作点图")
+    title("电机工作点图 - " + descriptions{idx})
     xlabel("转速 / (rpm)")
     ylabel("转矩 / (N·m)")
     hold off
