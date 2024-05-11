@@ -1,4 +1,4 @@
 <?xml version='1.0' encoding='UTF-8'?>
-<Info File="Data/loadData.m" GroupUUID="" Icon="" Name="loadData" Type="StartUp" Visible="0">
+<Info File="Data/load_data.m" GroupUUID="" Icon="" Name="loadData" Type="StartUp" Visible="0">
     <Extension Name="StartUpPrev" Value="HEAD"/>
 </Info>
