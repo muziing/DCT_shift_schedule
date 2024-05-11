@@ -3,7 +3,7 @@ function economyScores = evaluate_economy(shiftSchedules, parallel, doPlot)
 %   对传入的换挡规律进行仿真与结果分析以评估经济性得分，值越小经济性越好
 
 arguments
-    shiftSchedules (1, :) ShiftSchedule % 换挡规律
+    shiftSchedules (1, :) ShiftSchedule % 换挡规律/换挡规律数组
     parallel (1, 1) {mustBeNumericOrLogical} = false % 是否并行仿真
     doPlot (1, 1) {mustBeNumericOrLogical} = false % 是否进行绘图
 end
@@ -32,17 +32,14 @@ end
 %% 处理仿真结果数据
 % 定义变量，预分配内存
 economyScores = zeros(1, taskCount);
-socData = cell(1, taskCount);
-timestamps = cell(1, taskCount);
-velocityData = cell(1, taskCount);
+timestamps = cell(1, taskCount); % 时间戳
+socData = cell(1, taskCount); % 电池SOC
 
 try
     for idx = 1:taskCount
         socTimeTable = get(simOut(idx).logsout, "<BattSoc>").Values;
-        socData{idx} = socTimeTable.Data;
         timestamps{idx} = socTimeTable.Time;
-        velocityData{idx} = get(simOut(idx).logsout, "VehicleVelocity").Values.Data;
-        demandSpdData = get(simOut(1).logsout, "DemandSpd").Values.Data;
+        socData{idx} = socTimeTable.Data;
 
         % 计算经济性得分
         % 目前直接使用电池SOC消耗作为得分，可以考虑进一步优化
@@ -50,7 +47,7 @@ try
         economyScores(idx) = socTimeTable.Data(1) - socTimeTable.Data(end);
     end
 catch ME
-    disp("处理仿真结果数据时出错：" + ME.message...
+    disp("处理仿真结果数据时出错：" + ME.message ...
         + "，已将 evaEcoSimOut_debug 变量保存至基础工作区，以供调试");
     % 将simOut对象保存到工作区，方便调试
     assignin('base', 'evaEcoSimOut_debug', simOut);
@@ -59,49 +56,7 @@ end
 
 %% 绘图
 if doPlot
-    % SOC 曲线
-    figure("Name", "SOC曲线")
-    hold on
-    for idx = 1:taskCount
-        plot(timestamps{idx}, socData{idx}, 'DisplayName', ...
-            shiftSchedules(idx).Description)
-    end
-    grid on
-    title("电池 SOC 曲线")
-    ylabel("SOC / (%)")
-    legend('Location', 'northeast')
-    hold off
-
-    % 车速跟踪图
-    for idx = 1:taskCount
-        figure("Name", shiftSchedules(idx).Description + " - 车速曲线")
-        hold on
-        plot(timestamps{idx}, velocityData{idx}, 'DisplayName', ...
-            "实际车速")
-        plot(timestamps{idx}, demandSpdData, 'DisplayName', ...
-            "期望车速")
-        grid on
-        title("车速跟踪图")
-        xlabel("时间 / (s)")
-        ylabel("车速 / (km/h)")
-        legend('Location', 'northeast')
-        hold off
-    end
-
-    % 电机工作点图
-    % TODO 实现绘制电机工作点图功能
-    % for idx = 1:taskCount
-    %     figure("Name", shiftSchedules(idx).Description + " - 电机工作点图")
-    %     hold on
-    %     % plot(timestamps{idx}, velocityData{idx}, 'DisplayName', ...
-    %     %     "实际车速")
-    %     % plot(timestamps{idx}, demandSpdData, 'DisplayName', ...
-    %     %     "期望车速")
-    %     grid on
-    %     title("电机工作点图")
-    %     hold off
-    % end
-
+    plot_simout_data(simOut, [shiftSchedules.Description])
 end
 
 end
