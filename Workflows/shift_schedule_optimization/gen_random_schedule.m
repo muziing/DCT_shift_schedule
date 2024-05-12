@@ -8,26 +8,34 @@ arguments
     description (1, 1) {mustBeTextScalar} = "随机换挡规律" % 描述信息
 end
 
-% 输入检查
+%% 输入检查
 ShiftSchedule.check_other(shiftScheduleMin, shiftScheduleMax)
 if shiftScheduleMin > shiftScheduleMax
     error("shiftScheduleMin 必须严格小于 shiftScheduleMax")
 end
 
-% 遍历换挡规律 upSpds 中的所有速度，在给定范围内生成随机数
+%% 生成随机换挡规律
+
+% 预分配内存
 upSpds = zeros(size(shiftScheduleMin.UpSpds));
+
+% 差值 = 最大值 - 最小值
+diffUpSpds = shiftScheduleMax.UpSpds - shiftScheduleMin.UpSpds;
+
+% 通过循环遍历换挡规律 upSpds 中的所有速度，在给定范围内生成随机数
+% 确保每个维度使用不同的随机值
 for apIdx = 1:width(shiftScheduleMin.UpSpds)
-    % 最终值 = 最小值 + 0~1随机数 * (最大值 - 最小值)
     for gearIdx = 1:height(shiftScheduleMin.UpSpds)
+        % 最终值 = 最小值 + 0~1随机数 * (差值)
         upSpds(gearIdx, apIdx) = shiftScheduleMin.UpSpds(gearIdx, apIdx) + ...
-            rand * (shiftScheduleMax.UpSpds(gearIdx, apIdx) - ...
-            shiftScheduleMin.UpSpds(gearIdx, apIdx));
+            rand * diffUpSpds(gearIdx, apIdx);
     end
 end
+
 % 降挡点由 get_downshift_spds() 函数默认配置计算而来，不再随机生成
 downSpds = get_downshift_spds(upSpds);
 
-% 创建随机换挡规律实例
+%% 构造随机换挡规律实例
 randomSchedule = ShiftSchedule;
 randomSchedule.UpAPs = shiftScheduleMin.UpAPs;
 randomSchedule.DownAPs = shiftScheduleMin.DownAPs;
@@ -35,7 +43,7 @@ randomSchedule.Description = description;
 randomSchedule.UpSpds = upSpds;
 randomSchedule.DownSpds = downSpds;
 
-% 边界检查
+%% 边界检查
 randomSchedule = ShiftSchedule.limit_strict(randomSchedule, ...
     shiftScheduleMin, shiftScheduleMax);
 end
