@@ -88,12 +88,12 @@ for apIndex = 1:length(accelPedalValues)
         smoothedVelocities = smooth(velocityTimeTable.Data, 'moving', 20);
         
         % 差分得到加速度
-        accelerations = diff(smoothedVelocities) ./ diff(seconds(timestamps));
+        accelerations = diff(smoothedVelocities ./ 3.6) ./ diff(seconds(timestamps));
         jerks = diff(accelerations) ./ diff(seconds(timestamps(1:end-1)));
 
         % 获取电机转速转矩，查效率MAP图获取对应工作点效率
-        motorSpds_rads = get(simOut(index).logsout, "MotSpd").Values.Data;
-        motorSpds = motorSpds_rads * (60/(2*pi));  % rad/s -> rpm
+        motorSpds_radps = get(simOut(index).logsout, "MotSpd").Values.Data;
+        motorSpds = motorSpds_radps * (60/(2*pi));  % rad/s -> rpm
         motorTrqs = get(simOut(index).logsout, "MotTrq").Values.Data;
         motorEffs = interp2(MotorData.Efficiency.Drive.Speed, ...
             MotorData.Efficiency.Drive.Torque, ...
@@ -147,7 +147,7 @@ clear index apIndex gear velocityTimeTable
 clear timestamps  startIndex endIndex
 clear smoothedVelocities accelerations jerks
 clear equispacedVelocities accel2velocitie eff2velocitie
-clear motorSpds_rads motorSpds motorTrqs motorEffs
+clear motorSpds_radps motorSpds motorTrqs motorEffs
 
 % 保存仿真结果，以备日后检查排错
 % save("calibrate_result.mat", "simIn", "simOut", "result")
