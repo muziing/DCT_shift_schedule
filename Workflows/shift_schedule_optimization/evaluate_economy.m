@@ -10,16 +10,18 @@ end
 
 %% 创建仿真任务对象
 taskCount = length(shiftSchedules);
-simIns = simin_factory(shiftSchedules, "WLTC_class_2");
+simIns = simin_factory(shiftSchedules, "WLTC_class_3");
 
 %% 运行仿真
 try
     if ~parallel || taskCount < 2
         % 串行仿真
-        simOut = sim(simIns);
+        simOut = sim(simIns, 'ShowProgress', 'off', ...
+            'ShowSimulationManager', 'off');
     else
         % 并行仿真
-        simOut = parsim(simIns, 'ShowProgress', 'off');
+        simOut = parsim(simIns, 'ShowProgress', 'off', ...
+            'ShowSimulationManager', 'off');
     end
 catch ME
     disp("仿真运行时出错：" + ME.message + ...
@@ -56,7 +58,7 @@ end
 
 %% 绘图
 if doPlot
-    plot_simout_data(simOut, [shiftSchedules.Description])
+    plot_simout_data(simOut, ["soc", "gear"], [shiftSchedules.Description])
 end
 
 end
