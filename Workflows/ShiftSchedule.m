@@ -218,7 +218,7 @@ methods (Static)
             maxSchedule (1, 1) ShiftSchedule % 上界
         end
 
-        % FIXME 在PSO算法流程中，在此调用 limit() 无效，暂且将其实现复制一份
+        % 在以函数句柄方式调用本函数时，在此直接调用limit()的部分无效，暂且将其实现复制一份
         obj.UpSpds(obj.UpSpds < minSchedule.UpSpds) = ...
             minSchedule.UpSpds(obj.UpSpds < minSchedule.UpSpds);
         obj.DownSpds(obj.DownSpds < minSchedule.DownSpds) = ...

@@ -1,5 +1,4 @@
-function randomSchedule = gen_random_schedule(shiftScheduleMin, ...
-    shiftScheduleMax, description)
+function randomSchedule = gen_random_schedule(shiftScheduleMin, shiftScheduleMax, description)
 %GEN_RANDOM_SCHEDULE 在给定上下界限制内随机生成换挡规律实例
 %   用于粒子群优化算法中随机初始化粒子位置与速度（速度亦用 ShiftSchedule 类表示）
 arguments
