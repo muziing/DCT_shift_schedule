@@ -34,19 +34,23 @@ end
 %% 处理仿真结果数据
 % 定义变量，预分配内存
 economyScores = zeros(1, taskCount);
-timestamps = cell(1, taskCount); % 时间戳
 socData = cell(1, taskCount); % 电池SOC
+gearData = cell(1, taskCount); % 挡位
 
 try
     for idx = 1:taskCount
-        socTimeTable = get(simOut(idx).logsout, "<BattSoc>").Values;
-        timestamps{idx} = socTimeTable.Time;
-        socData{idx} = socTimeTable.Data;
+        socData{idx} = get(simOut(idx).logsout, "<BattSoc>").Values.Data;
+        gearData{idx} = get(simOut(idx).logsout, "<TransGear>").Values.Data;
+
+        % 换挡次数
+        shiftCount = sum(diff(gearData{idx}) ~= 0) - 1;
+
+        % 电池SOC消耗
+        socDelta = socData{idx}(1) - socData{idx}(end);
 
         % 计算经济性得分
-        % 目前直接使用电池SOC消耗作为得分，可以考虑进一步优化
-        % 可以考虑将换挡次数折合为一定量的SOC损耗，通过惩罚来抑制换挡次数
-        economyScores(idx) = socTimeTable.Data(1) - socTimeTable.Data(end);
+        % 将换挡次数折合为一定量的SOC损耗，通过惩罚来抑制过多的换挡次数
+        economyScores(idx) = socDelta + shiftCount * 0.015;
     end
 catch ME
     disp("处理仿真结果数据时出错：" + ME.message ...
