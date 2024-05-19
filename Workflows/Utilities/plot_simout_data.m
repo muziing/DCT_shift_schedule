@@ -43,10 +43,12 @@ for idx = 1:simOutCount
     socTimeTable = get(simOuts(idx).logsout, "<BattSoc>").Values;
     timestamps{idx} = socTimeTable.Time;
     socData{idx} = socTimeTable.Data;
-    velocityData{idx} = get(simOuts(idx).logsout, "VehicleVelocity").Values.Data;
+    velocityData{idx} = ...
+        get(simOuts(idx).logsout, "VehicleVelocity").Values.Data;
     demandSpdData = get(simOuts(1).logsout, "DemandSpd").Values.Data;
     gearData{idx} = get(simOuts(idx).logsout, "<TransGear>").Values.Data;
-    motSpdData{idx} = get(simOuts(1).logsout, "MotSpd").Values.Data .* (60 / (2 * pi));
+    motSpdData{idx} = ...
+        get(simOuts(1).logsout, "MotSpd").Values.Data .* (60 / (2 * pi));
     motTrqData{idx} = get(simOuts(1).logsout, "MotTrq").Values.Data;
 end
 
@@ -92,8 +94,8 @@ for figureType = figureTypes
                 plot(timestamps{idx}(502:end), gearData{idx}(502:end), ...
                     'DisplayName', descriptions{idx})
                 grid on
-                title("换挡情况曲线 - " + descriptions{idx} + "，换挡次数：" + ...
-                    num2str(shiftCount))
+                title("换挡情况曲线 - " + descriptions{idx} + ...
+                    "，换挡次数：" + num2str(shiftCount))
                 xlabel("时间 / (s)")
                 ylabel("挡位")
                 legend('Location', 'best')
@@ -110,17 +112,17 @@ for figureType = figureTypes
 
             for idx = 1:simOutCount
                 % 电机转速转矩的秒级数据
-                % TODO 待优化
-                for secTime = 1:length(timestamps{idx}) / 1000 - 1
-                    motSpdDataSec(secTime) = motSpdData{idx}(secTime * 1000);
-                    motTrqDataSec(secTime) = motTrqData{idx}(secTime * 1000);
-                end
+                timestamp = seconds(timestamps{idx}); % 转为double类型
+                sampleIndex = mod(timestamp, 1) == 0; % 按指定秒级间隔重采样
+                motSpdDataSec = motSpdData{idx}(sampleIndex);
+                motTrqDataSec = motTrqData{idx}(sampleIndex);
 
                 figure("Name", "电机工作点图 - " + descriptions{idx})
                 colormap jet
                 hold on
 
-                [C, h] = contourf(gridX, gridY, MotorData.Efficiency.Drive.Eff, ...
+                [C, h] = contourf(gridX, gridY, ...
+                    MotorData.Efficiency.Drive.Eff, ...
                     'LevelList', levelList);
                 clabel(C, h, labelLevelList, 'LabelSpacing', 200)
 
