@@ -5,13 +5,13 @@ classdef Particle
 properties
     x % 粒子位置
     pbest % 粒子历史最优位置
-    fitness_value_best % 粒子历史最优适应值
+    fitness_value_best (1, :) {mustBeNumeric} % 粒子历史最优适应值
 end
 
 properties (SetAccess = private)
     x_min % 粒子位置边界
     x_max % 粒子位置边界
-    fitness_value (1, 1) {mustBeNumeric} % 当前位置对应适应值
+    fitness_value (1, :) {mustBeNumeric} % 当前位置对应的适应值（/数组）
     v % 粒子速度
     v_max % 粒子速度最大值
     c1 (1, 1) {mustBeNumeric} % 个体学习因子
@@ -50,8 +50,8 @@ methods
         %   $v_{id}^{k+1} = \omega v_{id}^{k} +
         %   c_1 r_1 (p_{id, \mathrm{pbest}}^k - x_{id}^k) +
         %   c_2 r_2 (p_{d, \mathrm{gbest}}^k - x_{id}^k)$
-        %   其中 $r_1, r_2$ 为随机数，$p_{id, \mathrm{pbest}}^k$ 为粒子 $id$ 的
-        %   个体最佳值，$p_{d, \mathrm{gbest}}^k$ 为全局最佳值。
+        %   其中 $r_1, r_2$ 为随机数，$p_{id, \mathrm{pbest}}^k$ 为粒子 $id$
+        %   的个体最佳值，$p_{d, \mathrm{gbest}}^k$ 为全局最佳值。
         arguments
             obj (1, 1) Particle
             omega (1, 1) {mustBeNumeric} % 惯性权重
@@ -71,8 +71,8 @@ methods
 
     function obj = update_x(obj, xlim_func)
         %UPDATE_X 更新粒子位置
-        %   通过外部传入位置约束函数，可以更好地处理位置属性复杂的数据类型、设计
-        %   复杂的约束关系；xlim_func的函数声明应类似于：
+        %   通过外部传入位置约束函数，可以更好地处理位置属性复杂的数据类型、
+        %   设计复杂的约束关系；xlim_func的函数声明应类似于：
         %   new_x = xlim_func(new_x, obj.x_min, obj.x_max)
         arguments
             obj (1, 1) Particle
@@ -90,21 +90,47 @@ methods
     end
 
     function obj = update_fitness(obj, fitnessValue)
-        %SET.FITNESS_VALUE 更新适应值
-        %   在对整个粒子群的适应值进行统一更新（迭代）时，或可通过并行仿真等方法
-        %   加速，使总体耗时远小于各粒子单独计算自身适应值耗时之和，故交由外部
-        %   计算适应值、此处仅接受并保存新的适应值
+        %SET.FITNESS_VALUE 更新适应值，并处理个体历史最优信息
+        %   在对整个粒子群的适应值进行统一更新（迭代）时，或可通过并行仿真等
+        %   方法加速，使总体耗时远小于各粒子单独计算自身适应值耗时之和，故交
+        %   由外部计算适应值、此处仅接受并保存新的适应值
         arguments
             obj (1, 1) Particle
-            fitnessValue (1, 1) {mustBeNumeric} % 粒子适应值
+            fitnessValue (1, :) {mustBeNumeric} % 粒子适应值/适应值数组
         end
 
         obj.fitness_value = fitnessValue;
 
         % 同时处理历史最优位置的更新
-        if fitnessValue < obj.fitness_value_best
+        % TODO 可优化：应用于PSO时应用更简化的判断方法，以提高性能
+        if obj.judge_dominance(fitnessValue, obj.fitness_value_best)
+            % 新值支配旧的历史最优，更新
             obj.pbest = obj.x;
             obj.fitness_value_best = fitnessValue;
+        elseif obj.judge_dominance(obj.fitness_value_best, fitnessValue)
+            % 旧的历史最优支配新值，不更新
+        else
+            % 新值与旧历史最优互不支配，随机选择一个作为新最优
+            if rand < 0.5
+                obj.pbest = obj.x;
+                obj.fitness_value_best = fitnessValue;
+            end
+        end
+    end
+
+    function isDominat = judge_dominance(fitnessLeft, fitnessRight)
+        %JUDGE_DOMINANCE 判断两个适应值间的支配关系
+        %   返回true表示左值支配右值（左值全面优于右值）；
+        %   返回false表示左值不支配右值（不能表明右值支配左值）；
+        arguments
+            fitnessLeft (1, :) {mustBeNumeric} % 粒子适应值数组
+            fitnessRight (1, :) {mustBeNumeric} % 粒子适应值数组
+        end
+
+        if all(fitnessLeft < fitnessRight)
+            isDominat = true;
+        else
+            isDominat = false;
         end
     end
 end
