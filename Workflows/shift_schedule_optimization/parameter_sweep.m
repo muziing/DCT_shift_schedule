@@ -4,6 +4,7 @@
 % 加快优化迭代收敛速度。
 
 %% 配置
+
 load("ShiftSchedulesData.mat")
 refShiftSchedule = shiftSchedule_test_min;
 rampArray = -1:1:8;
@@ -27,6 +28,9 @@ economyScores = reshape(ecoScores, length(offsetArray), length(rampArray));
 
 %% 评估动力性
 
+dyaScores = evaluate_dynamic(scheduleArray, true, false);
+dynamicScores = reshape(dyaScores, length(offsetArray), length(rampArray));
+
 %% 结果可视化绘图
 
 figure('Name', "参数扫描-经济性评估")
@@ -36,6 +40,14 @@ xlabel("Ramp")
 ylabel("Offset")
 zlabel("Economy Score")
 
+figure('Name', "参数扫描-动力性评估")
+surf(rampArray, offsetArray, dynamicScores)
+title("参数扫描-动力性评估")
+xlabel("Ramp")
+ylabel("Offset")
+zlabel("Dynamic Score")
+
 %% 清理收尾
 
-clear taskCount idx scheduleArray rampIdx  offsetIdx ecoScores
+clear taskCount idx scheduleArray rampIdx  offsetIdx 
+clear ecoScores dyaScores
