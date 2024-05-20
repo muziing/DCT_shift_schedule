@@ -13,13 +13,10 @@
 
 %% 配置
 
-accelPedalValues = [15, 30, 50, 90, 100] / 100; % 加速踏板开度列表
+accelPedalValues = [10, 20, 50, 80, 100] / 100; % 加速踏板开度列表
 gearNumbers = 1:4; % 挡位数
-delaySpeed = 5; % 换挡延迟，(km/h)
-delaySpeedFactor = 1; % 换挡延迟系数
 
 modelName = "BEV_4DCT_Longitudinal"; % Simulink 模型文件名（不含扩展名）
-DrivingCycle = "AccelTest"; % 选择驾驶循环
 simStopTime = "400"; % 仿真停止时间，足以让车速达到稳定即可
 
 % 仿真模式，['normal', 'accelerator', 'rapid-accelerator'] 之一
@@ -43,18 +40,17 @@ index = 1;
 for apIndex = 1:length(accelPedalValues)
     for gear = gearNumbers
 
-        % 启用模型的标定调试模式
-        simIn(index) = simIn(index).setVariable('DrivingCycle', "AccelTest", ...
-            'Workspace', modelName);
+        % 启用模型的标定调试模式与固定挡位模式
         simIn(index) = simIn(index).setVariable('CalibrateMode', true, ...
+            'Workspace', modelName);
+        simIn(index) = simIn(index).setVariable('ConstantGearMode', true, ...
             'Workspace', modelName);
 
         % 配置AP开度与挡位
-
         simIn(index) = simIn(index).setBlockParameter( ...
             modelName + "/TCU/ConstantGear/GearConstant", 'Value', num2str(gear));
         simIn(index) = simIn(index).setBlockParameter( ...
-            modelName + "/Driver/AccelCmdGain", 'Gain', ...
+            modelName + "/Driver/CalibrateDriver/AccelCmdGain", 'Gain', ...
             num2str(accelPedalValues(apIndex)));
 
         % 配置其他仿真参数
@@ -82,25 +78,23 @@ for apIndex = 1:length(accelPedalValues)
     for gear = gearNumbers
 
         velocityTimeTable = get(simOut(index).logsout, "VehicleVelocity").Values;
-        timestamps = velocityTimeTable.Time;
-        
+        timestamps = velocityTimeTable.Time; % duration 类型
+
         % 因差分会显著放大噪声，使用移动平均值对速度简单滤波
-        smoothedVelocities = smooth(velocityTimeTable.Data, 'moving', 20);
-        
+        smoothedVelocities = smooth(velocityTimeTable.Data, 'moving', 50);
+
         % 差分得到加速度
         accelerations = diff(smoothedVelocities ./ 3.6) ./ diff(seconds(timestamps));
-        jerks = diff(accelerations) ./ diff(seconds(timestamps(1:end-1)));
+        jerks = diff(accelerations) ./ diff(seconds(timestamps(1:end - 1)));
 
         % 获取电机转速转矩，查效率MAP图获取对应工作点效率
         motorSpds_radps = get(simOut(index).logsout, "MotSpd").Values.Data;
-        motorSpds = motorSpds_radps * (60/(2*pi));  % rad/s -> rpm
+        motorSpds = motorSpds_radps * (60 / (2 * pi)); % rad/s -> rpm
         motorTrqs = get(simOut(index).logsout, "MotTrq").Values.Data;
         motorEffs = interp2(MotorData.Efficiency.Drive.Speed, ...
             MotorData.Efficiency.Drive.Torque, ...
             MotorData.Efficiency.Drive.Eff, ...
             motorSpds, motorTrqs); % 通过插值获取电机效率值
-
-        % TODO 将起始时间处理为驾驶员踩满加速踏板后的时刻
 
         % 截取求解已稳定、车速已稳定（加速度很小、且不再超过阈值）之间的数据
         % TODO 优化末尾截断方法，以跃度突变作为截断标志，而不只是加速度值很小
@@ -114,12 +108,12 @@ for apIndex = 1:length(accelPedalValues)
         accelerations = accelerations(startIndex:endIndex);
         jerks = jerks(startIndex:endIndex);
         motorEffs = motorEffs(startIndex:endIndex);
-        
+
         % plot(timestamps, smoothedVelocities) % 【车速-时间】曲线，调试用
-        plot(timestamps, accelerations) % 【加速度-时间】曲线，调试用
-        plot(timestamps, jerks)
+        % plot(timestamps, accelerations) % 【加速度-时间】曲线，调试用
+        % plot(timestamps, jerks)
         % plot(timestamps, motorEffs)
-        
+
         % 将处理后的数据重新整理至一张 timetable 中
         dataTable = timetable(smoothedVelocities, accelerations, motorEffs, ...
             'RowTimes', timestamps);
@@ -128,7 +122,7 @@ for apIndex = 1:length(accelPedalValues)
         equispacedVelocities = 0:0.001:max(smoothedVelocities);
         accel2velocitie = interp1(smoothedVelocities, accelerations, ...
             equispacedVelocities); % FIXME 解决可能存在相同车速的导致采样点不唯一的问题
-        eff2velocitie = interp1(smoothedVelocities, motorEffs, ....
+        eff2velocitie = interp1(smoothedVelocities, motorEffs, ...
             equispacedVelocities);
 
         % 将处理后的结果数据保存到结构体数组中
@@ -157,19 +151,19 @@ clear motorSpds_radps motorSpds motorTrqs motorEffs
 index = 1;
 
 for apIndex = 1:length(accelPedalValues)
-    
-    figure("Name", num2str(accelPedalValues(apIndex)*100)+"%")
+
+    figure("Name", num2str(accelPedalValues(apIndex) * 100) + "%")
     hold on
 
     for gear = gearNumbers
-        plot(result{index+gear-1}.EquispacedVelocities, ...
-            result{index+gear-1}.Accel2Velocities, ...
-            'DisplayName', num2str(gear)+"挡")
+        plot(result{index + gear - 1}.EquispacedVelocities, ...
+            result{index + gear - 1}.Accel2Velocities, ...
+            'DisplayName', num2str(gear) + "挡")
     end
 
     xlabel("车速 / (km/h)")
     ylabel("加速度 / (m/s^2)")
-    title("加速踏板开度："+num2str(accelPedalValues(apIndex)*100)+"%")
+    title("加速踏板开度："+num2str(accelPedalValues(apIndex) * 100) + "%")
     legend('Location', 'best')
 
     hold off
