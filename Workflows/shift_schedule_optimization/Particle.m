@@ -5,13 +5,13 @@ classdef Particle
 properties
     x % 粒子位置
     pbest % 粒子历史最优位置
+    fitness_value (1, :) {mustBeNumeric} % 当前位置对应的适应值（/数组）
     fitness_value_best (1, :) {mustBeNumeric} % 粒子历史最优适应值
 end
 
 properties (SetAccess = private)
     x_min % 粒子位置边界
     x_max % 粒子位置边界
-    fitness_value (1, :) {mustBeNumeric} % 当前位置对应的适应值（/数组）
     v % 粒子速度
     v_max % 粒子速度最大值
     c1 (1, 1) {mustBeNumeric} % 个体学习因子
@@ -117,7 +117,9 @@ methods
             end
         end
     end
+end
 
+methods (Static)
     function isDominat = judge_dominance(fitnessLeft, fitnessRight)
         %JUDGE_DOMINANCE 判断两个适应值间的支配关系
         %   返回true表示左值支配右值（左值全面优于右值）；
