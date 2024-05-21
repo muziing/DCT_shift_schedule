@@ -101,6 +101,12 @@ methods
 
         obj.fitness_value = fitnessValue;
 
+        if isempty(obj.fitness_value_best)
+            % 首次调用时，将历史最优适应值初始化为当前适应值即可
+            obj.fitness_value_best = fitnessValue;
+            return
+        end
+
         % 同时处理历史最优位置的更新
         % TODO 可优化：应用于PSO时应用更简化的判断方法，以提高性能
         if obj.judge_dominance(fitnessValue, obj.fitness_value_best)

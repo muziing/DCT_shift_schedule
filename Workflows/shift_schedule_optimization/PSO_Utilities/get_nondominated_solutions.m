@@ -24,7 +24,7 @@ for index = 2:length(particleArray)
         elseif Particle.judge_dominance( ...
                 particleB.fitness_value, particleA.fitness_value)
             % 新考察的粒子被支配，什么都不做
-            continue
+            break
         else
             % 新考察的粒子与非支配解集中的粒子都互不支配，
             % 将新考察的粒子加入非支配解集
@@ -39,6 +39,6 @@ for index = 2:length(particleArray)
         bestParticleArray = bestParticleArray(logicIndex);
 
         % 将新粒子加入非支配解集
-        bestParticleArray = [bestParticleArray, index]; %#ok<AGROW>
+        bestParticleArray = [bestParticleArray, particleArray(index)]; %#ok<AGROW>
     end
 end
