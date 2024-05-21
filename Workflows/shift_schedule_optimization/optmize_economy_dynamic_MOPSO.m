@@ -5,7 +5,7 @@
 
 % 粒子群配置
 particleCount = 70; % 粒子群规模（粒子数）
-archiveCount = 10; % 全局非支配粒子规模（最优粒子数）
+archiveCount = 20; % 全局非支配粒子规模（最优粒子数）
 loopCount = 80; % 最大迭代次数
 omegaMin = 0.2; % 最小惯性权重ω
 omegaMax = 1.2; % 最大惯性权重ω
@@ -29,13 +29,13 @@ shiftScheduleMax = shiftSchedule_test_max;
 
 %% 初始化粒子群
 
-fprintf("[%s] 启动 PSO 优化，粒子数[%d]，最大迭代数[%d]\n", ...
+fprintf("[%s] 启动 MOPSO 优化，粒子数[%d]，最大迭代数[%d]\n", ...
     string(datetime), particleCount, loopCount)
 
 % 粒子群
 particleArray = Particle.empty(particleCount, 0);
 % 全局最优粒子集
-archiveArray = Particle.empty(archiveCount, 0);
+archive = Archive(archiveCount);
 
 % 初始化粒子位置、速度、位置边界、速度边界
 for pIdx = 1:particleCount
@@ -47,17 +47,11 @@ for pIdx = 1:particleCount
     particleArray(pIdx) = Particle(initX, initV, vMax, xMin, xMax, c1, c2);
 end
 
-% 初始化粒子群适应值与archive
+% 初始化粒子群适应值
 [particleArray, currBestParticles] = update_all_fitness(particleArray);
-if length(currBestParticles) < archiveCount
-    archiveArray = currBestParticles;
-else
-    % TODO 设计archive溢出时的更新方法
-end
 
-% TODO 设计获取 gBest 的函数
-
-fprintf("[%s] 初始条件，全局最优解 [%.6f]\n", string(datetime), gBestScore)
+% 初始化archive
+archive.update(currBestParticles);
 
 % 更新粒子位置
 for pIdx = 1:particleCount
@@ -65,9 +59,46 @@ for pIdx = 1:particleCount
         @ShiftSchedule.limit_strict);
 end
 
+fprintf("[%s] 初始化完成\n", string(datetime))
+
 %% 迭代
 
+for loopIdx = 1:loopCount
+    % 更新惯性权重与全局最优位置
+    omega = update_omega(loopIdx, loopCount, omegaMin, omegaMax);
+    gbest = archive.get_gBest();
+
+    % 更新粒子速度
+    for pIdx = 1:particleCount
+        particleArray(pIdx) = particleArray(pIdx).update_v(omega, gbest, ...
+            @ShiftSchedule.limit);
+    end
+
+    % 更新粒子位置
+    for pIdx = 1:particleCount
+        particleArray(pIdx) = particleArray(pIdx).update_x( ...
+            @ShiftSchedule.limit_strict);
+    end
+
+    % 更新粒子群适应值
+    try
+        [particleArray, currBestParticles] = update_all_fitness(particleArray);
+    catch ME
+        disp("优化迭代运行时发生问题，已提前终止迭代，请检查")
+        break
+    end
+
+    % 更新总非支配解集
+    archive.update(currBestParticles);
+
+    % 输出提示信息，便于监控程序运行情况
+    fprintf("[%s] 第[%2d]次迭代完成", string(datetime), loopIdx)
+
+end
+
 %% 导出结果
+
+% 绘图，以散点图显示求解出的帕累托前沿
 
 %% 收尾清理
 
@@ -112,65 +143,4 @@ end
 % 提取非支配解集
 bestParticleArray = get_nondominated_solutions(particleArray);
 
-end
-
-function bestParticleArray = get_nondominated_solutions(particleArray)
-%GET_NONDOMINATED_SOLUTIONS 计算非支配解集
-%   从给定粒子群中，提取一组非支配解集，并以粒子数组形式返回
-arguments
-    particleArray (1, :) Particle % 粒子群（一维Particle数组）
-end
-
-% 初始化非支配解粒子数组
-bestParticleArray = particleArray(1);
-
-for index = 2:length(particleArray)
-    particleA = particleArray(index); % 新考察的粒子
-    flag = false; % 是否将新粒子加入非支配解集
-    deleteingIndex = []; % 需要从非支配解集中删除的粒子索引
-
-    for j = 1:length(bestParticleArray)
-        particleB = bestParticleArray(j); % 已在非支配解集中的粒子
-        if Particle.judge_dominance( ...
-                particleA.fitness_value, particleB.fitness_value)
-            % 新考察的粒子支配某个已在非支配解集中的粒子，
-            % 将新考察的粒子A加入非支配解集，并从非支配解集中删除另一个粒子B
-            flag = true;
-            deleteingIndex = [deleteingIndex, j]; %#ok<AGROW>
-        elseif Particle.judge_dominance( ...
-                particleB.fitness_value, particleA.fitness_value)
-            % 新考察的粒子被支配，什么都不做
-            continue
-        else
-            % 新考察的粒子与非支配解集中的粒子都互不支配，
-            % 将新考察的粒子加入非支配解集
-            flag = true;
-        end
-    end
-
-    if flag
-        % 删去待删除的粒子
-        logicIndex = true(size(bestParticleArray));
-        logicIndex(deleteingIndex) = false;
-        bestParticleArray = bestParticleArray(logicIndex);
-
-        % 将新粒子加入非支配解集
-        bestParticleArray = [bestParticleArray, index]; %#ok<AGROW>
-    end
-end
-
-end
-
-function omega = update_omega(iter, iterMax, omegaMin, omegaMax)
-%UPDATE_OMEGA 更新惯性权重ω
-%   线性变化策略：随着迭代次数的增加，惯性权重不断减小，从而使得粒子群算法在初期
-%   具有较强的全局收敛能力，在后期具有较强的局部收敛能力。
-arguments
-    iter (1, 1) {mustBeNumeric} % 当前迭代次数
-    iterMax (1, 1) {mustBeNumeric} % 最大迭代次数
-    omegaMin (1, 1) {mustBeNumeric} = 0.9 % 最小惯性权重
-    omegaMax (1, 1) {mustBeNumeric} = 1.8 % 最大惯性权重
-end
-
-omega = omegaMax - (omegaMax - omegaMin) * iter / iterMax;
 end
