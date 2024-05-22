@@ -24,6 +24,7 @@ for index = 2:length(particleArray)
         elseif Particle.judge_dominance( ...
                 particleB.fitness_value, particleA.fitness_value)
             % 新考察的粒子被支配，什么都不做
+            flag = false;
             break
         else
             % 新考察的粒子与非支配解集中的粒子都互不支配，

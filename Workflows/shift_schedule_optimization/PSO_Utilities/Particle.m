@@ -135,7 +135,7 @@ methods (Static)
             fitnessRight (1, :) {mustBeNumeric} % 粒子适应值数组
         end
 
-        if all(fitnessLeft < fitnessRight)
+        if all(fitnessLeft <= fitnessRight)
             isDominat = true;
         else
             isDominat = false;
