@@ -1,43 +1,39 @@
 function dynamicScores = evaluate_dynamic(shiftSchedules, parallel, doPlot)
 %EVALUATE_DYNAMIC 评估给定换挡规律的动力性
-%   将每个换挡规律代入模型后，进行数种仿真加速实验，最终将将耗时加权后求和作为动力性评分
-%   目前仅处理了全AP开度下0~100km/h加速这一种场景
+%   将每个换挡规律代入模型后，进行数种仿真加速实验，
+%   最终将将耗时加权后求和作为动力性评分。
+%   包含如下数种场景，耗时加权求和作为最终动力性评分：
+%   100% AP，0~100km/h加速时间（最大加速能力）、
+%   85% AP，50~80km/h加速时间（加速超车工况）、
+%   15%、40% AP，0~50km/h加速时间（低AP开度加速工况）
 arguments
     shiftSchedules (1, :) ShiftSchedule % 换挡规律/换挡规律数组
     parallel (1, 1) {mustBeNumericOrLogical} = false % 是否并行计算
     doPlot (1, 1) {mustBeNumericOrLogical} = false % 是否绘制结果图
 end
 
-modelName = "BEV_4DCT_Longitudinal";
-simStopTime = "200"; % 仿真停止时间，足以让车速达到稳定即可
-simIns = simin_factory(shiftSchedules); % 创建仿真任务对象
+%% 配置与构造仿真任务
 
-for index = 1:length(simIns)
+scheduleCount = length(shiftSchedules); % 待处理的换挡规律个数
 
-    % 启用标定调试模式，替代原有的驾驶员模型
-    simIns(index) = simIns(index).setVariable('CalibrateMode', true, ...
-        'Workspace', modelName);
+simIns = [ ...
+              simin_factory_accel(shiftSchedules, 1), ...
+              simin_factory_accel(shiftSchedules, 0.85), ...
+              simin_factory_accel(shiftSchedules, 0.15), ...
+              simin_factory_accel(shiftSchedules, 0.40)
+          ];
 
-    % 配置AP开度
-    simIns(index) = simIns(index).setBlockParameter( ...
-        modelName + "/Driver/CalibrateDriver/AccelCmdGain", 'Gain', ...
-        num2str(1));
-
-    % 配置其他仿真参数
-    simIns(index) = simIns(index).setModelParameter( ...
-        'StopTime', simStopTime ...
-    );
-
-end
+% 权重系数，用于平衡各加速工况对评分结果的影响
+weights = [0.1, 0.4, 0.11, 0.3];
 
 %% 运行仿真
 try
     if parallel
         simOuts = parsim(simIns, 'ShowProgress', 'off', ...
-            'ShowSimulationManager', 'on');
+            'ShowSimulationManager', 'off');
     else
         simOuts = sim(simIns, 'ShowProgress', 'off', ...
-            'ShowSimulationManager', 'on');
+            'ShowSimulationManager', 'off');
     end
 catch ME
     disp("仿真运行时出错：" + ME.message + ...
@@ -49,17 +45,35 @@ end
 
 %% 处理仿真结果数据
 
-dynamicScores = zeros(length(simOuts), 1);
+dynamicScores = zeros(1, scheduleCount);
 
-for index = 1:length(simOuts)
-    dynamicScores(index) = get_acceleration_time(simOuts(index), 0, 100);
+for index = 1:scheduleCount
+    accTime1 = get_acceleration_time(simOuts(index), 0, 100);
+    accTime2 = get_acceleration_time( ...
+        simOuts(index + scheduleCount), 50, 80);
+    accTime3 = get_acceleration_time( ...
+        simOuts(index + scheduleCount * 2), 0, 50);
+    accTime4 = get_acceleration_time( ...
+        simOuts(index + scheduleCount * 3), 0, 50);
+    dynamicScores(index) = ...
+        accTime1 * weights(1) + ...
+        accTime2 * weights(2) + ...
+        accTime3 * weights(3) + ...
+        accTime4 * weights(4);
 end
 
 %% 绘图
 if doPlot
     % 应为每种加速测试场景绘制一张图，每张图上包含所有换挡规律
     % FIXME 此处的绘图中还有不必要的“期望车速”信息，应设法删去
-    plot_simout_data(simOuts, "velocity", [shiftSchedules.Description])
+    plot_simout_data(simOuts(1:scheduleCount), "velocity", ...
+        [shiftSchedules.Description])
+    plot_simout_data(simOuts(scheduleCount + 1:scheduleCount * 2), ...
+        "velocity", [shiftSchedules.Description])
+    plot_simout_data(simOuts(scheduleCount * 2 + 1:scheduleCount * 3), ...
+        "velocity", [shiftSchedules.Description])
+    plot_simout_data(simOuts(scheduleCount * 3 + 1:scheduleCount * 4), ...
+        "velocity", [shiftSchedules.Description])
 end
 
 end
