@@ -16,12 +16,6 @@
 accelPedalValues = [10, 20, 50, 80, 100] / 100; % 加速踏板开度列表
 gearNumbers = 1:4; % 挡位数
 
-modelName = "BEV_4DCT_Longitudinal"; % Simulink 模型文件名（不含扩展名）
-simStopTime = "400"; % 仿真停止时间，足以让车速达到稳定即可
-
-% 仿真模式，['normal', 'accelerator', 'rapid-accelerator'] 之一
-simMode = "accelerator";
-
 % 加速度截止值，当加速度绝对值小于此值时认为车速已经稳定，舍弃此时刻后面的数据
 accelThreshold = 0.05;
 
@@ -31,33 +25,13 @@ startIndex = 1001;
 %% 创建、配置并运行仿真任务
 
 simTaskCount = length(accelPedalValues) * length(gearNumbers); % 仿真任务总数
-
-load_system(modelName) % 加载模型到内存中
-simIn(1:simTaskCount) = Simulink.SimulationInput(modelName); % 创建仿真输入对象
 index = 1;
 
 % 为每个仿真任务设置不同的AP开度与挡位
 for apIndex = 1:length(accelPedalValues)
     for gear = gearNumbers
-
-        % 启用模型的标定调试模式与固定挡位模式
-        simIn(index) = simIn(index).setVariable('CalibrateMode', true, ...
-            'Workspace', modelName);
-        simIn(index) = simIn(index).setVariable('ConstantGearMode', true, ...
-            'Workspace', modelName);
-
-        % 配置AP开度与挡位
-        simIn(index) = simIn(index).setBlockParameter( ...
-            modelName + "/TCU/ConstantGear/GearConstant", 'Value', num2str(gear));
-        simIn(index) = simIn(index).setBlockParameter( ...
-            modelName + "/Driver/CalibrateDriver/AccelCmdGain", 'Gain', ...
-            num2str(accelPedalValues(apIndex)));
-
-        % 配置其他仿真参数
-        simIn(index) = simIn(index).setModelParameter( ...
-            'SimulationMode', simMode, ...
-            'StopTime', simStopTime ...
-        );
+        simIn(index) = simin_factory_accel( ...
+            shiftSchedule_acc, accelPedalValues(apIndex), gear);
         index = index + 1;
     end
 end
@@ -66,8 +40,6 @@ end
 % （注意，建议在物理内存充足的电脑上使用并行仿真，
 % 低内存机器使用并行仿真，会频繁使用硬盘交换分区、反而可能极大拖慢仿真速度）
 simOut = parsim(simIn, 'ShowSimulationManager', 'on');
-
-clear simMode simStopTime
 
 %% 数据后处理
 
@@ -155,10 +127,10 @@ for apIndex = 1:length(accelPedalValues)
     figure("Name", num2str(accelPedalValues(apIndex) * 100) + "%")
     hold on
 
-    for gear = gearNumbers
-        plot(result{index + gear - 1}.EquispacedVelocities, ...
-            result{index + gear - 1}.Accel2Velocities, ...
-            'DisplayName', num2str(gear) + "挡")
+    for gearIdx = 1:length(gearNumbers)
+        plot(result{index + gearIdx - 1}.EquispacedVelocities, ...
+            result{index + gearIdx - 1}.Accel2Velocities, ...
+            'DisplayName', num2str(gearNumbers(gearIdx)) + "挡")
     end
 
     xlabel("车速 / (km/h)")
@@ -179,4 +151,4 @@ modelVersion = simOut(1).SimulationMetadata.ModelInfo.ModelVersion;
 
 %% 收尾清理
 
-clear modelName modelVersion gearNumbers simTaskCount result
+clear modelVersion gearNumbers simTaskCount result
