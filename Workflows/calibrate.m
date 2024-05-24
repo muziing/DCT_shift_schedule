@@ -73,7 +73,7 @@ for apIndex = 1:length(accelPedalValues)
         endIndex = get_consec_below_thold(abs(accelerations), accelThreshold);
         if isnan(endIndex)
             warning("未能确定车速稳定时刻，请检查模型、仿真时间与加速度阈值！")
-            endIndex = length(accelerations);
+            endIndex = length(accelerations) - 1;
         end
         timestamps = timestamps(startIndex:endIndex);
         smoothedVelocities = smoothedVelocities(startIndex:endIndex);
