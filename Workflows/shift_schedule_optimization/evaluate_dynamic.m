@@ -24,9 +24,10 @@ simIns = [ ...
           ];
 
 % 权重系数，用于平衡各加速工况对评分结果的影响
-weights = [0.1, 0.4, 0.11, 0.3];
+weights = [0.10, 0.40, 0.16, 0.30];
 
 %% 运行仿真
+
 try
     if parallel
         simOuts = parsim(simIns, 'ShowProgress', 'off', ...
@@ -52,7 +53,7 @@ for index = 1:scheduleCount
     accTime2 = get_acceleration_time( ...
         simOuts(index + scheduleCount), 50, 80);
     accTime3 = get_acceleration_time( ...
-        simOuts(index + scheduleCount * 2), 0, 50);
+        simOuts(index + scheduleCount * 2), 0, 40);
     accTime4 = get_acceleration_time( ...
         simOuts(index + scheduleCount * 3), 0, 50);
     dynamicScores(index) = ...
@@ -63,6 +64,7 @@ for index = 1:scheduleCount
 end
 
 %% 绘图
+
 if doPlot
     % 应为每种加速测试场景绘制一张图，每张图上包含所有换挡规律
     % FIXME 此处的绘图中还有不必要的“期望车速”信息，应设法删去
