@@ -1,7 +1,8 @@
 function plot_simout_data(simOuts, figureTypes, descriptions)
 %PLOT_SIMOUT_DATA 处理仿真结果数据，可视化绘图
 %   可以传入仿真结果对象数组，将多次仿真结果绘在同一张图上
-%   第二个参数为绘图类型，"soc"、"velocity"、"gear"、"motor" 组成的数组
+%   第二个参数为绘图类型，由"soc"、"velocity"、"velocity_track"、"gear"、
+%   "motor" 中任意项组成的数组
 %   第三个参数为可选参数，字符串数组，用于为每个仿真结果添加描述信息
 
 arguments
@@ -70,14 +71,12 @@ for figureType = figureTypes
             hold off
 
         case "velocity"
-            %% 车速跟踪图
+            %% 车速图
             figure("Name", "车速曲线")
             hold on
-            plot(timestamps{idx}, demandSpdData, 'DisplayName', ...
-            "期望车速")
             for idx = 1:simOutCount
                 plot(timestamps{idx}, velocityData{idx}, 'DisplayName', ...
-                    "实际车速 - " + descriptions{idx})
+                    descriptions{idx})
             end
             grid on
             title("车速曲线")
@@ -85,6 +84,23 @@ for figureType = figureTypes
             ylabel("车速 / (km/h)")
             legend('Location', 'best')
             hold off
+        
+            case "velocity_track"
+                %% 车速跟踪图
+                figure("Name", "车速曲线")
+                hold on
+                plot(timestamps{idx}, demandSpdData, 'DisplayName', ...
+                "期望车速")
+                for idx = 1:simOutCount
+                    plot(timestamps{idx}, velocityData{idx}, 'DisplayName', ...
+                        "实际车速 - " + descriptions{idx})
+                end
+                grid on
+                title("车速曲线")
+                xlabel("时间 / (s)")
+                ylabel("车速 / (km/h)")
+                legend('Location', 'best')
+                hold off
 
         case "gear"
             %% 挡位变化图
@@ -98,6 +114,7 @@ for figureType = figureTypes
                     "，换挡次数：" + num2str(shiftCount))
                 xlabel("时间 / (s)")
                 ylabel("挡位")
+                yticks(1:4)
                 legend('Location', 'best')
             end
 

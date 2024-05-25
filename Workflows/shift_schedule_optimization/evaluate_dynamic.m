@@ -38,9 +38,9 @@ try
     end
 catch ME
     disp("仿真运行时出错：" + ME.message + ...
-    "，已将 evaEcoSimIn_debug 变量保存至基础工作区，以供调试");
+    "，已将 evaDyaSimIn_debug 变量保存至基础工作区，以供调试");
     % 将simIns对象保存到工作区，方便调试
-    assignin('base', 'evaEcoSimIn_debug', simIns);
+    assignin('base', 'evaDyaSimIn_debug', simIns);
     throw(ME)
 end
 
@@ -67,7 +67,6 @@ end
 
 if doPlot
     % 应为每种加速测试场景绘制一张图，每张图上包含所有换挡规律
-    % FIXME 此处的绘图中还有不必要的“期望车速”信息，应设法删去
     plot_simout_data(simOuts(1:scheduleCount), "velocity", ...
         [shiftSchedules.Description])
     plot_simout_data(simOuts(scheduleCount + 1:scheduleCount * 2), ...

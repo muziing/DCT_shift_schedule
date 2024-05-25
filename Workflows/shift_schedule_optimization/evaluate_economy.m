@@ -62,7 +62,8 @@ end
 
 %% 绘图
 if doPlot
-    plot_simout_data(simOut, ["soc", "gear"], [shiftSchedules.Description])
+    plot_simout_data(simOut, ["soc", "gear", "velocity_track"], ...
+        [shiftSchedules.Description])
 end
 
 end
