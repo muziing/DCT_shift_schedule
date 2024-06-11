@@ -143,6 +143,5 @@ clear gearIdx vehicleSpds colors upShiftSpds_eco downShiftSpds_eco
 
 clear accelPedalValues gearCount
 
-% TODO 优化相对路径处理
-save("../Data/ShiftSchedules.mat", "shiftSchedule_acc", "shiftSchedule_eco", ...
-'-v7.3')
+save("ShiftSchedules.mat", "shiftSchedule_acc", "shiftSchedule_eco", ...
+'-append')

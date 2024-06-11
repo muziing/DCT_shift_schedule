@@ -22,7 +22,8 @@ newUpSpds(:, 1) = referSchedule.UpSpds(:, 1);
 
 % 处理ramp
 for apIdx = 2:width(newUpSpds)
-    newUpSpds(:, apIdx) = newUpSpds(:, 1) + ramp * (apIdx - 1) * pedalPos(apIdx)';
+    newUpSpds(:, apIdx) = newUpSpds(:, 1) + ...
+        ramp * (apIdx - 1) * pedalPos(apIdx)';
 end
 
 % 处理offset
@@ -39,6 +40,6 @@ newSchedule.UpSpds = newUpSpds;
 newSchedule.DownSpds = newDownSpds;
 newSchedule.UpAPs = referSchedule.UpAPs;
 newSchedule.DownAPs = referSchedule.UpAPs;
-newSchedule.Description = "ramp-offset 换挡规律";
+newSchedule.Description = sprintf("Ramp=%d Offset=%d", ramp, offset);
 
 end

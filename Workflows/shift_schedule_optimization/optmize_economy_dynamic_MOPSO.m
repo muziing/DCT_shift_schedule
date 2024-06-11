@@ -4,9 +4,9 @@
 %% 配置
 
 % 粒子群配置
-particleCount = 56; % 粒子群规模（粒子数）
+particleCount = 70; % 粒子群规模（粒子数）
 archiveCount = 15; % 全局非支配粒子规模（最优粒子数）
-loopCount = 20; % 最大迭代次数
+loopCount = 40; % 最大迭代次数
 omegaMin = 0.2; % 最小惯性权重ω
 omegaMax = 1.2; % 最大惯性权重ω
 c1 = 1.6; % 个体学习因子
@@ -33,8 +33,6 @@ fprintf("[%s] 启动 MOPSO 优化，粒子数[%d]，最大迭代数[%d]\n", ...
 
 % 粒子群
 particleArray = Particle.empty(particleCount, 0);
-% 全局最优粒子集
-archive = Archive(archiveCount);
 
 % 初始化粒子位置、速度、位置边界、速度边界
 for pIndex = 1:particleCount
@@ -49,7 +47,8 @@ end
 % 初始化粒子群适应值
 [particleArray, currBestParticles] = update_all_fitness(particleArray);
 
-% 初始化archive
+% 初始化archive（全局最优粒子集）
+archive = Archive(archiveCount);
 archive.update(currBestParticles);
 
 % 更新粒子位置
@@ -91,7 +90,16 @@ for loopIndex = 1:loopCount
     archive.update(currBestParticles);
 
     % 输出提示信息，便于监控程序运行情况
-    fprintf("[%s] 第[%2d]次迭代完成\n", string(datetime), loopIndex)
+    tempBestParticles = archive.get_best_particles(); % 当前归档中最优粒子
+    % TODO 优化适应值提取方式
+    aaa = reshape([tempBestParticles.fitness_value], 2, [])';
+    tempBestEco = min(aaa(:, 1));
+    tempBestDya = min(aaa(:, 2));
+
+    fprintf("[%s] 第[%2d]次迭代完成，全局非支配解 [%d] 个，" + ...
+        "最优经济性评分 [%.3f]，最优动力性评分 [%.3f]\n", ...
+        string(datetime), loopIndex, length(tempBestParticles), ...
+        tempBestEco, tempBestDya);
 
 end
 
@@ -100,13 +108,18 @@ end
 finalBestParticles = archive.get_best_particles();
 
 % 绘图，以散点图显示求解出的帕累托前沿
-aaa = reshape([finalBestParticles.fitness_value], 2, [])';
+bbb = reshape([finalBestParticles.fitness_value], 2, [])';
 figure('Name', "优化结果")
-scatter(aaa(:, 1)', aaa(:, 2)')
+scatter(bbb(:, 1)', bbb(:, 2)')
+grid on
+title("MOPSO优化结果")
 xlabel("经济性评分")
 ylabel("动力性评分")
 
 %% 收尾清理
+
+clear initX initV vMax xMax xMin shiftScheduleMin shiftScheduleMax
+clear loopIndex pIndex
 
 %% 辅助函数
 

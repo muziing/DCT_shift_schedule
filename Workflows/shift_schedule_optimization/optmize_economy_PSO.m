@@ -4,12 +4,12 @@
 %% 配置
 
 % 粒子群配置
-particleCount = 56; % 粒子群规模（粒子数）
-loopCount = 30; % 最大迭代次数
+particleCount = 70; % 粒子群规模（粒子数）
+loopCount = 80; % 最大迭代次数
 omegaMin = 0.2; % 最小惯性权重ω
 omegaMax = 1.2; % 最大惯性权重ω
-c1 = 1.6; % 个体学习因子
-c2 = 2; % 群体学习因子
+c1 = 2.0; % 个体学习因子
+c2 = 2.2; % 群体学习因子
 epsilon = 1e-6; % 收敛阈值（连续两轮全局最优解之差小于此阈值则停止迭代完成优化）
 
 % 检查配置参数合理性
@@ -114,11 +114,11 @@ fprintf("[%s] 优化结束，全局最优解 [%.4f]\n", string(datetime), gBestS
 
 %% 导出结果
 
-shiftSchedule_eco = gbest;
-shiftSchedule_eco.Description = "经济型换挡规律（PSO优化）";
-plot_shift_lines(shiftSchedule_eco);
+shiftSchedule_eco_pso = gbest;
+shiftSchedule_eco_pso.Description = "经济型换挡规律（PSO优化）";
+plot_shift_lines(shiftSchedule_eco_pso);
 
-shiftSchedules_eco_pso = [shiftSchedules_eco_pso, shiftSchedule_eco];
+shiftSchedules_eco_pso = [shiftSchedules_eco_pso, shiftSchedule_eco_pso];
 save("ShiftSchedulesData.mat", "shiftSchedules_eco_pso", '-append')
 
 %% 收尾清理
@@ -160,18 +160,4 @@ bestX = shiftSchedules(bestParticleIdx(1));
 for pIdx = 1:particleCount
     particleArray(pIdx) = particleArray(pIdx).update_fitness(ecoScores(pIdx));
 end
-end
-
-function omega = update_omega(iter, iterMax, omegaMin, omegaMax)
-%UPDATE_OMEGA 更新惯性权重ω
-%   线性变化策略：随着迭代次数的增加，惯性权重不断减小，从而使得粒子群算法在初期
-%   具有较强的全局收敛能力，在后期具有较强的局部收敛能力。
-arguments
-    iter (1, 1) {mustBeNumeric} % 当前迭代次数
-    iterMax (1, 1) {mustBeNumeric} % 最大迭代次数
-    omegaMin (1, 1) {mustBeNumeric} = 0.9 % 最小惯性权重
-    omegaMax (1, 1) {mustBeNumeric} = 1.8 % 最大惯性权重
-end
-
-omega = omegaMax - (omegaMax - omegaMin) * iter / iterMax;
 end
